@@ -18,9 +18,24 @@
             </h1>
             <span class="subtitle">Workload Identity & Policy-Based Access Control for AI Agents</span>
         </div>
-        <div class="service-status">
-            <span id="connection-status" class="status-dot unknown" title="Connecting..."></span>
-            <span>Event Stream</span>
+        <div class="header-status">
+            <div class="service-status" title="User Service">
+                <span id="status-user-service" class="status-dot unknown"></span>
+                <span>User</span>
+            </div>
+            <div class="service-status" title="Agent Service">
+                <span id="status-agent-service" class="status-dot unknown"></span>
+                <span>Agent</span>
+            </div>
+            <div class="service-status" title="Document Service">
+                <span id="status-document-service" class="status-dot unknown"></span>
+                <span>Doc</span>
+            </div>
+            <div class="service-status-divider"></div>
+            <div class="service-status">
+                <span id="connection-status" class="status-dot unknown" title="Connecting..."></span>
+                <span>Events</span>
+            </div>
         </div>
     </header>
 
@@ -152,37 +167,31 @@
                 </div>
             </div>
 
-            <!-- Service Status -->
+            <!-- Access Result Panel -->
             <div class="card">
                 <div class="card-header">
-                    <h3>Service Status</h3>
+                    <h3>Access Result</h3>
                 </div>
                 <div class="card-body">
-                    <div class="service-status" style="margin-bottom: 12px;">
-                        <span id="status-user-service" class="status-dot unknown"></span>
-                        <span>User Service (:8082)</span>
-                    </div>
-                    <div class="service-status" style="margin-bottom: 12px;">
-                        <span id="status-agent-service" class="status-dot unknown"></span>
-                        <span>Agent Service (:8083)</span>
-                    </div>
-                    <div class="service-status" style="margin-bottom: 12px;">
-                        <span id="status-document-service" class="status-dot unknown"></span>
-                        <span>Document Service (:8084)</span>
-                    </div>
-
-                    <div class="section-divider"></div>
-
-                    <h4 style="font-size: 14px; margin-bottom: 8px;">Documents</h4>
-                    <div id="document-list">
-                        <div style="color: var(--rh-gray);">Loading documents...</div>
+                    <div id="result-panel" class="result-panel-inline">
+                        <div class="result-placeholder">
+                            <p>Select a user and document, then click <strong>Direct Access</strong> or <strong>Delegate to Agent</strong> to see the result.</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Result Panel -->
-        <div id="result-panel" class="result-panel" style="display: none;">
+        <!-- Documents Row -->
+        <div class="card" style="margin-top: 16px;">
+            <div class="card-header">
+                <h3>Documents</h3>
+            </div>
+            <div class="card-body">
+                <div id="document-list" class="document-grid">
+                    <div style="color: var(--rh-gray);">Loading documents...</div>
+                </div>
+            </div>
         </div>
 
         <!-- Console Output -->

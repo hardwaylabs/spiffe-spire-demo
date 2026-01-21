@@ -457,3 +457,87 @@ code, pre, .mono {
     background-color: var(--rh-gray-light);
     margin: var(--spacing-lg) 0;
 }
+
+/* Header Status Bar */
+.header-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.header-status .service-status {
+    font-size: 12px;
+}
+
+.service-status-divider {
+    width: 1px;
+    height: 20px;
+    background-color: var(--rh-gray);
+    margin: 0 var(--spacing-xs);
+}
+
+/* Inline Result Panel (in 3rd column) */
+.result-panel-inline {
+    min-height: 200px;
+}
+
+.result-panel-inline.granted {
+    background-color: #F3FAF2;
+    border: 1px solid var(--rh-green);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+}
+
+.result-panel-inline.denied {
+    background-color: #FBEAEA;
+    border: 1px solid var(--color-danger);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+}
+
+.result-placeholder {
+    color: var(--rh-gray);
+    text-align: center;
+    padding: var(--spacing-xl) var(--spacing-md);
+}
+
+.result-placeholder p {
+    margin: 0;
+}
+
+/* Document Grid (horizontal layout) */
+.document-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.document-grid .document-card {
+    margin-bottom: 0;
+}
+
+/* Result Content Styles */
+.result-panel-inline h4 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 16px;
+}
+
+.result-panel-inline.granted h4 {
+    color: var(--rh-green);
+}
+
+.result-panel-inline.denied h4 {
+    color: var(--color-danger);
+}
+
+.result-panel-inline .document-content {
+    background-color: var(--rh-gray-lighter);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    font-family: 'Red Hat Mono', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+}

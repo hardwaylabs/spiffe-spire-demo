@@ -327,30 +327,28 @@ class Dashboard {
         const panel = document.getElementById('result-panel');
         if (!panel) return;
 
-        panel.className = `result-panel ${success ? 'granted' : 'denied'}`;
+        panel.className = `result-panel-inline ${success ? 'granted' : 'denied'}`;
 
         if (success && result.granted) {
             panel.innerHTML = `
                 <h4>Access Granted</h4>
                 <p>${result.reason}</p>
                 ${result.document ? `
-                    <div class="section-divider"></div>
-                    <h5>${result.document.title}</h5>
-                    <pre style="white-space: pre-wrap; font-size: 12px;">${result.document.content || 'Document content available'}</pre>
+                    <div class="document-content">
+                        <strong>${result.document.title}</strong>
+                        <div style="margin-top: 8px;">${result.document.content || 'Document content available'}</div>
+                    </div>
                 ` : ''}
             `;
         } else {
             panel.innerHTML = `
                 <h4>Access Denied</h4>
                 <p>${result.reason || result.error || 'Permission denied'}</p>
-                <div class="alert alert-info" style="margin-top: 16px;">
-                    <strong>Zero Trust Principle:</strong> Both user AND agent must have the required permissions.
-                    The effective permissions are the intersection of user departments and agent capabilities.
+                <div class="alert alert-info" style="margin-top: 16px; margin-bottom: 0;">
+                    <strong>Zero Trust:</strong> Both user AND agent must have the required permissions.
                 </div>
             `;
         }
-
-        panel.style.display = 'block';
     }
 
     clearConsole() {
