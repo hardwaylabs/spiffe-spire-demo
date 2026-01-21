@@ -192,8 +192,18 @@ func (s *AgentService) handleDelegatedAccess(w http.ResponseWriter, r *http.Requ
 	}
 
 	if req.UserSPIFFEID == "" {
+		s.log.Section("AUTONOMOUS AGENT ACCESS ATTEMPT")
 		s.log.Error("No user SPIFFE ID provided - agents cannot act autonomously")
-		http.Error(w, "User SPIFFE ID required for delegation", http.StatusBadRequest)
+		s.log.Deny("Agent requests require user delegation context")
+
+		// Return a proper JSON response for the dashboard
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"granted": false,
+			"reason":  "Agent requests require user delegation context. Agents cannot access resources without explicit user delegation.",
+			"agent":   agent.ID,
+		})
 		return
 	}
 

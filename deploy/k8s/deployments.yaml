@@ -19,8 +19,15 @@ spec:
     spec:
       containers:
         - name: opa-service
-          image: spiffe-demo/opa-service:latest
+          image: localhost/spiffe-demo/opa-service:latest
           imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
           ports:
             - containerPort: 8085
           args:
@@ -84,8 +91,15 @@ spec:
     spec:
       containers:
         - name: document-service
-          image: spiffe-demo/document-service:latest
+          image: localhost/spiffe-demo/document-service:latest
           imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
           ports:
             - containerPort: 8084
           args:
@@ -145,8 +159,15 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: spiffe-demo/user-service:latest
+          image: localhost/spiffe-demo/user-service:latest
           imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
           ports:
             - containerPort: 8082
           args:
@@ -206,8 +227,15 @@ spec:
     spec:
       containers:
         - name: agent-service
-          image: spiffe-demo/agent-service:latest
+          image: localhost/spiffe-demo/agent-service:latest
           imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
           ports:
             - containerPort: 8083
           args:
@@ -265,8 +293,15 @@ spec:
     spec:
       containers:
         - name: web-dashboard
-          image: spiffe-demo/web-dashboard:latest
+          image: localhost/spiffe-demo/web-dashboard:latest
           imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
           ports:
             - containerPort: 8080
           args:

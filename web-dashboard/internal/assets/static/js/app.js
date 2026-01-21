@@ -42,7 +42,7 @@ class Dashboard {
                 this.populateSelect('user-select', this.users, u => ({
                     value: u.id,
                     label: `${u.name} (${u.departments.join(', ')})`
-                }));
+                }), false, true);  // addNone=false, addNoUser=true
                 this.log('success', `Loaded ${this.users.length} users`);
             }
         } catch (err) {
@@ -86,7 +86,7 @@ class Dashboard {
         }
     }
 
-    populateSelect(id, items, mapper, addNone = false) {
+    populateSelect(id, items, mapper, addNone = false, addNoUser = false) {
         const select = document.getElementById(id);
         if (!select) return;
 
@@ -96,6 +96,13 @@ class Dashboard {
             const option = document.createElement('option');
             option.value = '';
             option.textContent = '(None - Direct Access)';
+            select.appendChild(option);
+        }
+
+        if (addNoUser) {
+            const option = document.createElement('option');
+            option.value = '__no_user__';
+            option.textContent = '(No User - Agent Only)';
             select.appendChild(option);
         }
 
@@ -250,21 +257,40 @@ class Dashboard {
             agentSelect.addEventListener('change', () => this.updateButtonStates());
         }
 
+        // User select change
+        const userSelect = document.getElementById('user-select');
+        if (userSelect) {
+            userSelect.addEventListener('change', () => this.updateButtonStates());
+        }
+
         this.updateButtonStates();
     }
 
     updateButtonStates() {
+        const userSelect = document.getElementById('user-select');
         const agentSelect = document.getElementById('agent-select');
         const directBtn = document.getElementById('direct-access-btn');
         const delegateBtn = document.getElementById('delegate-btn');
 
-        const hasAgent = agentSelect && agentSelect.value !== '';
+        const userId = userSelect?.value;
+        const agentId = agentSelect?.value;
+        const isNoUser = userId === '__no_user__';
+        const hasRealUser = userId && !isNoUser;
+        const hasAgent = agentId && agentId !== '';
 
         if (directBtn) {
-            directBtn.disabled = hasAgent;
+            // Direct access only when real user selected and no agent
+            directBtn.disabled = !hasRealUser || hasAgent;
         }
         if (delegateBtn) {
+            // Delegate/Agent access when agent is selected
             delegateBtn.disabled = !hasAgent;
+            // Update button text based on user selection
+            if (isNoUser && hasAgent) {
+                delegateBtn.textContent = 'Agent Access (No User)';
+            } else {
+                delegateBtn.textContent = 'Delegate to Agent';
+            }
         }
     }
 
@@ -298,22 +324,36 @@ class Dashboard {
         const agentId = document.getElementById('agent-select')?.value;
         const documentId = document.getElementById('document-select')?.value;
 
-        if (!userId || !agentId || !documentId) {
-            this.log('error', 'Please select a user, agent, and document');
+        if (!agentId || !documentId) {
+            this.log('error', 'Please select an agent and document');
             return;
         }
 
-        this.log('info', `Initiating delegated access: User=${userId} -> Agent=${agentId}, Document=${documentId}`);
+        const isNoUser = userId === '__no_user__';
+
+        if (isNoUser) {
+            this.log('warn', `Agent ${agentId} attempting access WITHOUT user delegation: Document=${documentId}`);
+        } else if (!userId) {
+            this.log('error', 'Please select a user or "No User" option');
+            return;
+        } else {
+            this.log('info', `Initiating delegated access: User=${userId} -> Agent=${agentId}, Document=${documentId}`);
+        }
 
         try {
+            const requestBody = {
+                agent_id: agentId,
+                document_id: documentId
+            };
+            // Only include user_id if a real user is selected
+            if (!isNoUser && userId) {
+                requestBody.user_id = userId;
+            }
+
             const response = await fetch('/api/access-delegated', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: userId,
-                    agent_id: agentId,
-                    document_id: documentId
-                })
+                body: JSON.stringify(requestBody)
             });
 
             const result = await response.json();

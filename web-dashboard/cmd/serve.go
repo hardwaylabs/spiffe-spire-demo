@@ -412,19 +412,46 @@ func (d *Dashboard) handleDelegatedAccess(w http.ResponseWriter, r *http.Request
 	}
 	d.log.Info("Delegated access params", "user", req.UserID, "agent", req.AgentID, "document", req.DocumentID)
 
-	d.broadcastLog(LogEntry{
-		Timestamp: time.Now().Format(time.RFC3339),
-		Component: "DASHBOARD",
-		Level:     "INFO",
-		Message:   fmt.Sprintf("Initiating delegated access: User=%s delegates to Agent=%s for Document=%s", req.UserID, req.AgentID, req.DocumentID),
-		Color:     "white",
-	})
+	var resp *http.Response
+	var err error
 
-	body, _ := json.Marshal(req)
-	d.log.Info("Calling user service for delegation", "url", d.userServiceURL+"/delegate")
-	resp, err := d.httpClient.Post(d.userServiceURL+"/delegate", "application/json", bytes.NewReader(body))
+	// Check if this is agent-only access (no user delegation)
+	if req.UserID == "" {
+		// Agent-only access - call agent service directly without user context
+		d.broadcastLog(LogEntry{
+			Timestamp: time.Now().Format(time.RFC3339),
+			Component: "DASHBOARD",
+			Level:     "WARN",
+			Message:   fmt.Sprintf("Agent %s attempting access WITHOUT user delegation for Document=%s", req.AgentID, req.DocumentID),
+			Color:     "yellow",
+		})
+
+		// Call agent service directly - this should be denied by OPA
+		agentReq := map[string]string{
+			"document_id": req.DocumentID,
+			// No user_spiffe_id - agent acting autonomously
+		}
+		body, _ := json.Marshal(agentReq)
+		url := fmt.Sprintf("%s/agents/%s/access", d.agentServiceURL, req.AgentID)
+		d.log.Info("Calling agent service directly (no user)", "url", url)
+		resp, err = d.httpClient.Post(url, "application/json", bytes.NewReader(body))
+	} else {
+		// Normal delegated access - go through user service
+		d.broadcastLog(LogEntry{
+			Timestamp: time.Now().Format(time.RFC3339),
+			Component: "DASHBOARD",
+			Level:     "INFO",
+			Message:   fmt.Sprintf("Initiating delegated access: User=%s delegates to Agent=%s for Document=%s", req.UserID, req.AgentID, req.DocumentID),
+			Color:     "white",
+		})
+
+		body, _ := json.Marshal(req)
+		d.log.Info("Calling user service for delegation", "url", d.userServiceURL+"/delegate")
+		resp, err = d.httpClient.Post(d.userServiceURL+"/delegate", "application/json", bytes.NewReader(body))
+	}
+
 	if err != nil {
-		d.log.Error("User service delegation request failed", "error", err)
+		d.log.Error("Service request failed", "error", err)
 		d.broadcastLog(LogEntry{
 			Timestamp: time.Now().Format(time.RFC3339),
 			Component: "DASHBOARD",
@@ -437,19 +464,23 @@ func (d *Dashboard) handleDelegatedAccess(w http.ResponseWriter, r *http.Request
 	}
 	defer resp.Body.Close()
 
-	d.log.Info("User service delegation response", "status", resp.StatusCode)
+	d.log.Info("Service response", "status", resp.StatusCode)
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	if resp.StatusCode == http.StatusForbidden {
+	if resp.StatusCode == http.StatusForbidden || (result["granted"] != nil && result["granted"] == false) {
+		reason := result["reason"]
+		if reason == nil {
+			reason = result["error"]
+		}
 		d.broadcastLog(LogEntry{
 			Timestamp: time.Now().Format(time.RFC3339),
 			Component: "DASHBOARD",
 			Level:     "WARN",
-			Message:   fmt.Sprintf("Delegated access DENIED: %v", result["reason"]),
+			Message:   fmt.Sprintf("Access DENIED: %v", reason),
 			Color:     "red",
 		})
-	} else {
+	} else if result["granted"] == true {
 		d.broadcastLog(LogEntry{
 			Timestamp: time.Now().Format(time.RFC3339),
 			Component: "DASHBOARD",
