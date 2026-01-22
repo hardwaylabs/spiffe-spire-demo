@@ -20,7 +20,7 @@ Thanks for your interest in contributing to the SPIFFE/SPIRE Zero Trust Demo!
 
 ### Project Structure
 
-```
+```text
 spiffe-spire-demo/
 ├── pkg/                    # Shared packages
 ├── web-dashboard/          # Dashboard service (:8080)
@@ -47,10 +47,29 @@ make test       # Run tests
 tail -f tmp/logs/*.log      # Watch logs (separate terminal)
 ```
 
-### Testing in Kubernetes
+### Testing in Kubernetes (with local images)
 
 ```bash
-./scripts/setup-kind.sh     # Create Kind cluster
+# Create Kind cluster
+./scripts/setup-kind.sh
+
+# Build and load local images
+make docker-build
+make docker-load
+
+# Deploy with local images
+kubectl apply -f deploy/k8s/namespace.yaml
+kubectl apply -f deploy/k8s/opa-policies-configmap.yaml
+kubectl apply -f deploy/k8s/deployments-local.yaml
+
+# Open dashboard
+open http://localhost:8080
+```
+
+### Testing in Kubernetes (with pre-built images)
+
+```bash
+./scripts/setup-kind.sh
 kubectl apply -f deploy/k8s/
 ```
 

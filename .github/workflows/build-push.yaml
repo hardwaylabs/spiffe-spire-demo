@@ -3,8 +3,22 @@ name: Build and Push Images
 on:
   push:
     branches: [main]
+    paths:
+      - '**/*.go'
+      - '**/Dockerfile'
+      - 'go.mod'
+      - 'go.sum'
+      - 'opa-service/policies/**'
+      - '.github/workflows/build-push.yaml'
   pull_request:
-    branches: [main]  # Build but don't push for PRs
+    branches: [main]
+    paths:
+      - '**/*.go'
+      - '**/Dockerfile'
+      - 'go.mod'
+      - 'go.sum'
+      - 'opa-service/policies/**'
+      - '.github/workflows/build-push.yaml'
 
 env:
   REGISTRY: ghcr.io
