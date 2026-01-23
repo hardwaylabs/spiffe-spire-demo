@@ -260,6 +260,52 @@ When Bob delegates to Summarizer:
 
 6. **Least Privilege**: Agents act as capability limiters, never privilege escalators
 
+## Observability
+
+### Prometheus Metrics
+
+All services expose Prometheus metrics on their health port:
+
+| Service          | Metrics URL                      |
+| ---------------- | -------------------------------- |
+| user-service     | `http://localhost:8182/metrics`  |
+| agent-service    | `http://localhost:8183/metrics`  |
+| document-service | `http://localhost:8184/metrics`  |
+| opa-service      | `http://localhost:8185/metrics`  |
+| web-dashboard    | `http://localhost:8080/metrics`  |
+
+**Available metrics:**
+- `spiffe_demo_svid_expiration_seconds` - Time until SVID expires
+- `spiffe_demo_svid_rotations_total` - SVID rotation count
+- `spiffe_demo_http_request_duration_seconds` - Request latency
+- `spiffe_demo_authorization_decisions_total` - Allow/deny counts
+- `spiffe_demo_delegations_total` - Delegation attempts
+
+**Example:**
+```bash
+curl http://localhost:8182/metrics | grep spiffe_demo
+```
+
+### Structured JSON Logging
+
+For production environments or log aggregation, enable JSON logging:
+
+```bash
+SPIFFE_DEMO_LOG_FORMAT=json ./scripts/run-local.sh
+```
+
+**JSON log format:**
+```json
+{
+  "time": "2026-01-23T10:00:00Z",
+  "level": "INFO",
+  "msg": "Authorization decision",
+  "component": "document-service",
+  "spiffe_id": "spiffe://demo.example.com/user/alice",
+  "document_id": "DOC-001"
+}
+```
+
 ## Stopping the Demo
 
 Press `Ctrl+C` in the terminal running `run-local.sh`.

@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
@@ -136,6 +137,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// Routes
 	mux.HandleFunc("/", dashboard.handleIndex)
 	mux.HandleFunc("/health", dashboard.handleHealth)
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/events", dashboard.handleSSE)
 	mux.HandleFunc("/api/users", dashboard.handleGetUsers)
 	mux.HandleFunc("/api/agents", dashboard.handleGetAgents)

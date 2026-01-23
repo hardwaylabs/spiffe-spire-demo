@@ -161,11 +161,18 @@ jobs:
 
 ---
 
-### Group B: Observability
+### Group B: Observability ✅
 
-#### Task B1: Prometheus Metrics
+#### Task B1: Prometheus Metrics ✅
+
+**Status**: Completed
 
 **Objective**: Expose metrics for monitoring SVID health, request latency, and authorization decisions.
+
+**Implementation**:
+- Created `pkg/metrics/metrics.go` with metrics definitions
+- Added `/metrics` endpoint to all services (on health port for mTLS services)
+- Metrics available: SVID expiration, rotations, request duration, authorization decisions
 
 **New package**: `pkg/metrics/metrics.go`
 
@@ -220,30 +227,20 @@ var (
 
 **Estimated effort**: 4-5 hours
 
-#### Task B2: Structured JSON Logging
+#### Task B2: Structured JSON Logging ✅
+
+**Status**: Completed
 
 **Objective**: Output structured logs for aggregation in production.
 
-**Update** `pkg/logger/logger.go`:
+**Implementation**:
+- Set `SPIFFE_DEMO_LOG_FORMAT=json` for structured JSON output
+- Component is included as a default attribute in JSON logs
+- Useful for log aggregation in production environments
 
-```go
-func NewLogger(component string, opts ...Option) *Logger {
-    var handler slog.Handler
-
-    if os.Getenv("LOG_FORMAT") == "json" {
-        handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-            Level: slog.LevelInfo,
-        })
-    } else {
-        // Existing colored text handler
-        handler = NewColoredHandler(os.Stdout, component)
-    }
-
-    return &Logger{
-        Logger:    slog.New(handler),
-        component: component,
-    }
-}
+**Usage**:
+```bash
+SPIFFE_DEMO_LOG_FORMAT=json ./bin/user-service serve
 ```
 
 **Log format**:
@@ -259,9 +256,9 @@ func NewLogger(component string, opts ...Option) *Logger {
 }
 ```
 
-**Estimated effort**: 2-3 hours
+#### Task B3: OpenTelemetry Tracing ⏸️
 
-#### Task B3: OpenTelemetry Tracing
+**Status**: Deferred - Not needed for demo project
 
 **Objective**: Distributed tracing across service calls.
 
@@ -292,20 +289,18 @@ func (c *WorkloadClient) CreateHTTPClient(ctx context.Context) (*http.Client, er
 
 **Estimated effort**: 5-6 hours
 
-#### Task B4: Grafana Dashboard
+#### Task B4: Grafana Dashboard ⏸️
+
+**Status**: Deferred - Not needed for demo project
 
 **Objective**: Pre-built dashboard for monitoring the demo.
 
-**File**: `deploy/monitoring/grafana-dashboard.json`
-
-**Panels**:
+**Panels** (if implemented later):
 1. SVID TTL remaining (per service)
 2. Request rate by service
 3. Authorization allow/deny ratio
 4. Request latency percentiles (p50, p95, p99)
 5. Active delegations
-
-**Estimated effort**: 3-4 hours
 
 ---
 

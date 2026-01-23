@@ -154,9 +154,26 @@ type Logger struct {
 }
 
 // New creates a new component-specific logger
+// Set SPIFFE_DEMO_LOG_FORMAT=json for structured JSON output (useful for production/log aggregation)
 func New(component Component) *Logger {
-	useColors := os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb"
-	handler := NewColorHandler(os.Stdout, component, useColors)
+	var handler slog.Handler
+
+	if os.Getenv("SPIFFE_DEMO_LOG_FORMAT") == "json" {
+		// JSON handler for production/log aggregation
+		opts := &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}
+		baseHandler := slog.NewJSONHandler(os.Stdout, opts)
+		// Add component as a default attribute
+		handler = baseHandler.WithAttrs([]slog.Attr{
+			slog.String("component", string(component)),
+		})
+	} else {
+		// Color handler for local development
+		useColors := os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb"
+		handler = NewColorHandler(os.Stdout, component, useColors)
+	}
+
 	return &Logger{
 		Logger:    slog.New(handler),
 		component: component,
