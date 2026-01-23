@@ -103,6 +103,7 @@ See [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md) for all deployment options includin
 | [Learning Guide](docs/LEARNING_GUIDE.md) | Deep dive into Zero Trust, SPIFFE/SPIRE, mTLS, and OPA |
 | [API Testing](docs/API_TESTING.md) | API endpoints and curl commands for testing |
 | [Phase 2 Integration](docs/PHASE2_SPIRE_INTEGRATION.md) | Technical details of SPIRE integration |
+| [Phase 3 Plan](docs/PHASE3_PRODUCTION_READINESS.md) | Production readiness and observability roadmap |
 | [Contributing](CONTRIBUTING.md) | Guidelines for contributors |
 
 ## Development
