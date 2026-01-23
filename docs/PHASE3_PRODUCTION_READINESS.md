@@ -1,6 +1,6 @@
 # Phase 3: Production Readiness & Observability
 
-## Status: 📋 PLANNING
+## Status: 🚧 IN PROGRESS
 
 ## Overview
 
@@ -23,13 +23,17 @@ Phase 3 builds on the real SPIFFE/SPIRE integration from Phase 2 to add producti
 
 ## Task Groups
 
-### Group A: CI/CD Pipeline
+### Group A: CI/CD Pipeline ✅
 
-#### Task A1: GitHub Actions Workflow
+#### Task A1: GitHub Actions Workflow ✅
+
+**Status**: Completed
 
 **Objective**: Automatically build and push images to ghcr.io on every push to main.
 
 **File**: `.github/workflows/build-push.yaml`
+
+**Decision**: Build only on push to main (not on PRs) to conserve GitHub Actions minutes. For a demo project, local testing before merge is sufficient.
 
 ```yaml
 name: Build and Push Images
@@ -37,8 +41,13 @@ name: Build and Push Images
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+    paths:
+      - '**/*.go'
+      - '**/Dockerfile'
+      - 'go.mod'
+      - 'go.sum'
+      - 'opa-service/policies/**'
+      - '.github/workflows/build-push.yaml'
 
 env:
   REGISTRY: ghcr.io
@@ -61,11 +70,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -94,25 +105,17 @@ jobs:
 
 **Estimated effort**: 2-3 hours
 
-#### Task A2: Multi-Architecture Builds
+#### Task A2: Multi-Architecture Builds ✅
+
+**Status**: Completed (included in Task A1)
 
 **Objective**: Build for both amd64 and arm64 (Apple Silicon support).
 
-**Changes to workflow**:
-```yaml
-- name: Set up QEMU
-  uses: docker/setup-qemu-action@v3
+The workflow already includes QEMU setup and builds for `linux/amd64,linux/arm64`.
 
-- name: Build and push
-  uses: docker/build-push-action@v5
-  with:
-    platforms: linux/amd64,linux/arm64
-    # ... rest of config
-```
+#### Task A3: Integration Tests in CI ⏸️
 
-**Estimated effort**: 1 hour
-
-#### Task A3: Integration Tests in CI
+**Status**: Deferred - Running tests locally for now to conserve CI minutes.
 
 **Objective**: Run tests before merging PRs.
 
@@ -158,11 +161,18 @@ jobs:
 
 ---
 
-### Group B: Observability
+### Group B: Observability ✅
 
-#### Task B1: Prometheus Metrics
+#### Task B1: Prometheus Metrics ✅
+
+**Status**: Completed
 
 **Objective**: Expose metrics for monitoring SVID health, request latency, and authorization decisions.
+
+**Implementation**:
+- Created `pkg/metrics/metrics.go` with metrics definitions
+- Added `/metrics` endpoint to all services (on health port for mTLS services)
+- Metrics available: SVID expiration, rotations, request duration, authorization decisions
 
 **New package**: `pkg/metrics/metrics.go`
 
@@ -217,30 +227,20 @@ var (
 
 **Estimated effort**: 4-5 hours
 
-#### Task B2: Structured JSON Logging
+#### Task B2: Structured JSON Logging ✅
+
+**Status**: Completed
 
 **Objective**: Output structured logs for aggregation in production.
 
-**Update** `pkg/logger/logger.go`:
+**Implementation**:
+- Set `SPIFFE_DEMO_LOG_FORMAT=json` for structured JSON output
+- Component is included as a default attribute in JSON logs
+- Useful for log aggregation in production environments
 
-```go
-func NewLogger(component string, opts ...Option) *Logger {
-    var handler slog.Handler
-
-    if os.Getenv("LOG_FORMAT") == "json" {
-        handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-            Level: slog.LevelInfo,
-        })
-    } else {
-        // Existing colored text handler
-        handler = NewColoredHandler(os.Stdout, component)
-    }
-
-    return &Logger{
-        Logger:    slog.New(handler),
-        component: component,
-    }
-}
+**Usage**:
+```bash
+SPIFFE_DEMO_LOG_FORMAT=json ./bin/user-service serve
 ```
 
 **Log format**:
@@ -256,9 +256,9 @@ func NewLogger(component string, opts ...Option) *Logger {
 }
 ```
 
-**Estimated effort**: 2-3 hours
+#### Task B3: OpenTelemetry Tracing ⏸️
 
-#### Task B3: OpenTelemetry Tracing
+**Status**: Deferred - Not needed for demo project
 
 **Objective**: Distributed tracing across service calls.
 
@@ -289,20 +289,18 @@ func (c *WorkloadClient) CreateHTTPClient(ctx context.Context) (*http.Client, er
 
 **Estimated effort**: 5-6 hours
 
-#### Task B4: Grafana Dashboard
+#### Task B4: Grafana Dashboard ⏸️
+
+**Status**: Deferred - Not needed for demo project
 
 **Objective**: Pre-built dashboard for monitoring the demo.
 
-**File**: `deploy/monitoring/grafana-dashboard.json`
-
-**Panels**:
+**Panels** (if implemented later):
 1. SVID TTL remaining (per service)
 2. Request rate by service
 3. Authorization allow/deny ratio
 4. Request latency percentiles (p50, p95, p99)
 5. Active delegations
-
-**Estimated effort**: 3-4 hours
 
 ---
 

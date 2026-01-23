@@ -38,11 +38,11 @@ We use [Kustomize](https://kustomize.io/) to manage different deployment modes. 
 
 ### Deployment Modes Overview
 
-| Mode | Images | SPIFFE | Use Case |
-|------|--------|--------|----------|
-| **mock** | ghcr.io | Mocked | Quick demo, no SPIRE required |
-| **local** | localhost/* | Real SPIRE | Local development with Kind |
-| **ghcr** | ghcr.io | Real SPIRE | Production-like with SPIRE |
+| Mode      | Images      | SPIFFE     | Use Case                      |
+| --------- | ----------- | ---------- | ----------------------------- |
+| **mock**  | ghcr.io     | Mocked     | Quick demo, no SPIRE required |
+| **local** | localhost/* | Real SPIRE | Local development with Kind   |
+| **ghcr**  | ghcr.io     | Real SPIRE | Production-like with SPIRE    |
 
 ### Option A: Mock Mode (Quickest Demo)
 
@@ -65,7 +65,7 @@ kubectl apply -k deploy/k8s/overlays/mock
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
 
 # Open dashboard
-open http://localhost:30080
+open http://localhost:8080
 ```
 
 ### Option B: Local Mode (Development with SPIRE)
@@ -82,7 +82,7 @@ make build
 
 # Create Kind cluster with SPIRE
 ./scripts/setup-kind.sh
-./scripts/install-spire.sh
+./scripts/setup-spire.sh
 
 # Build and load Docker images into Kind
 ./scripts/build-images.sh
@@ -91,12 +91,9 @@ make build
 # Deploy with local overlay (uses localhost/* images)
 kubectl apply -k deploy/k8s/overlays/local
 
-# Apply SPIFFE ID registrations
-kubectl apply -f deploy/spire/clusterspiffeids.yaml
-
 # Wait for pods and open dashboard
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
-open http://localhost:30080
+open http://localhost:8080
 ```
 
 ### Option C: GHCR Mode (Production-like)
@@ -110,17 +107,14 @@ cd spiffe-spire-demo
 
 # Create Kind cluster with SPIRE
 ./scripts/setup-kind.sh
-./scripts/install-spire.sh
+./scripts/setup-spire.sh
 
 # Deploy with ghcr overlay (pulls from ghcr.io)
 kubectl apply -k deploy/k8s/overlays/ghcr
 
-# Apply SPIFFE ID registrations
-kubectl apply -f deploy/spire/clusterspiffeids.yaml
-
 # Wait for pods and open dashboard
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
-open http://localhost:30080
+open http://localhost:8080
 ```
 
 ### Option D: Local Development (No Kubernetes)
@@ -265,6 +259,52 @@ When Bob delegates to Summarizer:
 5. **No Autonomous Agents**: Agents cannot access resources without user context
 
 6. **Least Privilege**: Agents act as capability limiters, never privilege escalators
+
+## Observability
+
+### Prometheus Metrics
+
+All services expose Prometheus metrics on their health port:
+
+| Service          | Metrics URL                      |
+| ---------------- | -------------------------------- |
+| user-service     | `http://localhost:8182/metrics`  |
+| agent-service    | `http://localhost:8183/metrics`  |
+| document-service | `http://localhost:8184/metrics`  |
+| opa-service      | `http://localhost:8185/metrics`  |
+| web-dashboard    | `http://localhost:8080/metrics`  |
+
+**Available metrics:**
+- `spiffe_demo_svid_expiration_seconds` - Time until SVID expires
+- `spiffe_demo_svid_rotations_total` - SVID rotation count
+- `spiffe_demo_http_request_duration_seconds` - Request latency
+- `spiffe_demo_authorization_decisions_total` - Allow/deny counts
+- `spiffe_demo_delegations_total` - Delegation attempts
+
+**Example:**
+```bash
+curl http://localhost:8182/metrics | grep spiffe_demo
+```
+
+### Structured JSON Logging
+
+For production environments or log aggregation, enable JSON logging:
+
+```bash
+SPIFFE_DEMO_LOG_FORMAT=json ./scripts/run-local.sh
+```
+
+**JSON log format:**
+```json
+{
+  "time": "2026-01-23T10:00:00Z",
+  "level": "INFO",
+  "msg": "Authorization decision",
+  "component": "document-service",
+  "spiffe_id": "spiffe://demo.example.com/user/alice",
+  "document_id": "DOC-001"
+}
+```
 
 ## Stopping the Demo
 

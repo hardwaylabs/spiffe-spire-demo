@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
@@ -157,10 +158,11 @@ func runServe(cmd *cobra.Command, args []string) error {
 	log.Info("Loaded users", "count", len(svc.store.List()))
 	log.Info("mTLS mode", "enabled", !cfg.Service.MockSPIFFE)
 
-	// Start separate plain HTTP health server for Kubernetes probes
+	// Start separate plain HTTP health server for Kubernetes probes and metrics
 	healthMux := http.NewServeMux()
 	healthMux.HandleFunc("/health", svc.handleHealth)
 	healthMux.HandleFunc("/ready", svc.handleHealth)
+	healthMux.Handle("/metrics", promhttp.Handler())
 	healthServer := &http.Server{
 		Addr:         cfg.Service.HealthAddr(),
 		Handler:      healthMux,

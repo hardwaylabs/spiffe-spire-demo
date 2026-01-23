@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
@@ -144,6 +145,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	healthMux := http.NewServeMux()
 	healthMux.HandleFunc("/health", svc.handleHealth)
 	healthMux.HandleFunc("/ready", svc.handleHealth)
+	healthMux.Handle("/metrics", promhttp.Handler())
 	healthServer := &http.Server{
 		Addr:         cfg.Service.HealthAddr(),
 		Handler:      healthMux,
