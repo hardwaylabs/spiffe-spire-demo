@@ -38,15 +38,6 @@ spire-server:
   # For Kind, we don't need HA
   replicaCount: 1
 
-  # Configure CA TTLs
-  ca_subject:
-    country: US
-    organization: SPIFFE Demo
-    common_name: SPIFFE Demo CA
-
-  # SVID TTL - 1 hour for demo (default)
-  default_x509_svid_ttl: 1h
-
   # Registration entries can be created via CRDs
   # We'll create ClusterSPIFFEID resources for our workloads
 
