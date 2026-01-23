@@ -21,10 +21,18 @@ fi
 
 helm repo update
 
-echo "Installing SPIRE (this may take a few minutes)..."
-helm upgrade --install spire spiffe/spire \
+# Phase 1: Install SPIRE CRDs first
+echo "Phase 1: Installing SPIRE CRDs..."
+helm upgrade --install spire-crds spiffe/spire-crds \
     --namespace spire-system \
     --create-namespace \
+    --wait \
+    --timeout 2m
+
+# Phase 2: Install SPIRE components
+echo "Phase 2: Installing SPIRE components (this may take a few minutes)..."
+helm upgrade --install spire spiffe/spire \
+    --namespace spire-system \
     --values "$PROJECT_ROOT/deploy/spire/values.yaml" \
     --wait \
     --timeout 5m
@@ -35,7 +43,7 @@ kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=server -n spire
 echo "Waiting for SPIRE agents to be ready..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=agent -n spire-system --timeout=120s
 
-echo "Applying ClusterSPIFFEID registrations..."
+echo "Applying ClusterSPIFFEID registrations for demo workloads..."
 kubectl apply -f "$PROJECT_ROOT/deploy/spire/clusterspiffeids.yaml"
 
 echo ""
@@ -49,4 +57,6 @@ echo "To verify SPIRE is working:"
 echo "  kubectl exec -n spire-server spire-server-0 -- spire-server entry show"
 echo ""
 echo "Next step: Deploy the demo application with:"
-echo "  kubectl apply -f deploy/k8s/"
+echo "  kubectl apply -f deploy/k8s/namespace.yaml"
+echo "  kubectl apply -f deploy/k8s/opa-policies-configmap.yaml"
+echo "  kubectl apply -f deploy/k8s/deployments-spire.yaml"
