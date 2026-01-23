@@ -54,7 +54,7 @@ git clone https://github.com/hardwaylabs/spiffe-spire-demo.git
 cd spiffe-spire-demo
 
 ./scripts/setup-kind.sh
-./scripts/install-spire.sh
+./scripts/setup-spire.sh
 kubectl apply -k deploy/k8s/overlays/ghcr
 kubectl apply -f deploy/spire/clusterspiffeids.yaml
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
