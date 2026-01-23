@@ -16,6 +16,7 @@ import (
 
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/logger"
+	"github.com/hardwaylabs/spiffe-spire-demo/pkg/spiffe"
 	"github.com/hardwaylabs/spiffe-spire-demo/user-service/internal/store"
 )
 
@@ -61,6 +62,7 @@ type UserService struct {
 	agentServiceURL    string
 	log                *logger.Logger
 	trustDomain        string
+	workloadClient     *spiffe.WorkloadClient
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
@@ -79,15 +81,37 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	log := logger.New(logger.ComponentUserService)
 
+	// Initialize SPIFFE workload client
+	spiffeCfg := spiffe.Config{
+		SocketPath:  cfg.SPIFFE.SocketPath,
+		TrustDomain: cfg.SPIFFE.TrustDomain,
+		MockMode:    cfg.Service.MockSPIFFE,
+	}
+	workloadClient := spiffe.NewWorkloadClient(spiffeCfg, log)
+
+	// Fetch identity from SPIRE Agent (unless in mock mode)
+	ctx := context.Background()
+	if !cfg.Service.MockSPIFFE {
+		identity, err := workloadClient.FetchIdentity(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to fetch SPIFFE identity: %w", err)
+		}
+		log.Info("SPIFFE identity acquired", "spiffe_id", identity.SPIFFEID)
+	} else {
+		workloadClient.SetMockIdentity("spiffe://" + cfg.SPIFFE.TrustDomain + "/service/user-service")
+	}
+
+	// Create mTLS HTTP client for outgoing requests
+	httpClient := workloadClient.CreateMTLSClient(10 * time.Second)
+
 	svc := &UserService{
-		store: store.NewUserStore(cfg.SPIFFE.TrustDomain),
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		store:              store.NewUserStore(cfg.SPIFFE.TrustDomain),
+		httpClient:         httpClient,
 		documentServiceURL: cfg.DocumentServiceURL,
 		agentServiceURL:    cfg.AgentServiceURL,
 		log:                log,
 		trustDomain:        cfg.SPIFFE.TrustDomain,
+		workloadClient:     workloadClient,
 	}
 
 	mux := http.NewServeMux()
@@ -97,12 +121,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 	mux.HandleFunc("/access", svc.handleDirectAccess)
 	mux.HandleFunc("/delegate", svc.handleDelegate)
 
-	server := &http.Server{
-		Addr:         cfg.Service.Addr(),
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-	}
+	// Wrap with SPIFFE identity middleware
+	handler := spiffe.IdentityMiddleware(cfg.Service.MockSPIFFE)(mux)
+
+	server := workloadClient.CreateHTTPServer(cfg.Service.Addr(), handler)
+	server.ReadTimeout = 10 * time.Second
+	server.WriteTimeout = 30 * time.Second
 
 	// Graceful shutdown
 	done := make(chan bool)
@@ -112,11 +136,14 @@ func runServe(cmd *cobra.Command, args []string) error {
 		<-sigCh
 
 		log.Info("Shutting down user service...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := server.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Error("Shutdown error", "error", err)
+		}
+		if err := workloadClient.Close(); err != nil {
+			log.Error("Failed to close SPIFFE workload client", "error", err)
 		}
 		close(done)
 	}()
@@ -127,9 +154,17 @@ func runServe(cmd *cobra.Command, args []string) error {
 	log.Info("Document service", "url", cfg.DocumentServiceURL)
 	log.Info("Agent service", "url", cfg.AgentServiceURL)
 	log.Info("Loaded users", "count", len(svc.store.List()))
+	log.Info("mTLS mode", "enabled", !cfg.Service.MockSPIFFE)
 
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		return fmt.Errorf("server error: %w", err)
+	// Start server (mTLS if not in mock mode)
+	var serverErr error
+	if !cfg.Service.MockSPIFFE && server.TLSConfig != nil {
+		serverErr = server.ListenAndServeTLS("", "")
+	} else {
+		serverErr = server.ListenAndServe()
+	}
+	if serverErr != http.ErrServerClosed {
+		return fmt.Errorf("server error: %w", serverErr)
 	}
 
 	<-done

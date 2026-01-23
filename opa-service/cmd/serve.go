@@ -16,6 +16,7 @@ import (
 
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/logger"
+	"github.com/hardwaylabs/spiffe-spire-demo/pkg/spiffe"
 )
 
 var serveCmd = &cobra.Command{
@@ -54,9 +55,10 @@ type PolicyDecision struct {
 }
 
 type OPAService struct {
-	logger      *logger.Logger
-	query       rego.PreparedEvalQuery
-	decisionLog *logger.Logger
+	logger         *logger.Logger
+	query          rego.PreparedEvalQuery
+	decisionLog    *logger.Logger
+	workloadClient *spiffe.WorkloadClient
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
@@ -72,8 +74,28 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	log := logger.New(logger.ComponentOPAService)
 
+	// Initialize SPIFFE workload client
+	spiffeCfg := spiffe.Config{
+		SocketPath:  cfg.SPIFFE.SocketPath,
+		TrustDomain: cfg.SPIFFE.TrustDomain,
+		MockMode:    cfg.Service.MockSPIFFE,
+	}
+	workloadClient := spiffe.NewWorkloadClient(spiffeCfg, log)
+
+	// Fetch identity from SPIRE Agent (unless in mock mode)
+	ctx := context.Background()
+	if !cfg.Service.MockSPIFFE {
+		identity, err := workloadClient.FetchIdentity(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to fetch SPIFFE identity: %w", err)
+		}
+		log.Info("SPIFFE identity acquired", "spiffe_id", identity.SPIFFEID)
+	} else {
+		workloadClient.SetMockIdentity("spiffe://" + cfg.SPIFFE.TrustDomain + "/service/opa-service")
+	}
+
 	// Load and compile policies
-	svc, err := newOPAService(log, cfg.PolicyDir)
+	svc, err := newOPAService(log, cfg.PolicyDir, workloadClient)
 	if err != nil {
 		return fmt.Errorf("failed to initialize OPA service: %w", err)
 	}
@@ -83,12 +105,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 	mux.HandleFunc("/v1/data/authz/allow", svc.handleAllow)
 	mux.HandleFunc("/v1/data/demo/authorization/decision", svc.handleDecision)
 
-	server := &http.Server{
-		Addr:         cfg.Service.Addr(),
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-	}
+	// Wrap with SPIFFE identity middleware
+	handler := spiffe.IdentityMiddleware(cfg.Service.MockSPIFFE)(mux)
+
+	server := workloadClient.CreateHTTPServer(cfg.Service.Addr(), handler)
+	server.ReadTimeout = 10 * time.Second
+	server.WriteTimeout = 10 * time.Second
 
 	// Graceful shutdown
 	done := make(chan bool)
@@ -98,11 +120,14 @@ func runServe(cmd *cobra.Command, args []string) error {
 		<-sigCh
 
 		log.Info("Shutting down OPA service...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := server.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Error("Shutdown error", "error", err)
+		}
+		if err := workloadClient.Close(); err != nil {
+			log.Error("Failed to close SPIFFE workload client", "error", err)
 		}
 		close(done)
 	}()
@@ -112,9 +137,17 @@ func runServe(cmd *cobra.Command, args []string) error {
 	log.Info("Policies loaded successfully")
 	log.Info("Decision endpoint: /v1/data/demo/authorization/decision")
 	log.Info("Health endpoint: /health")
+	log.Info("mTLS mode", "enabled", !cfg.Service.MockSPIFFE)
 
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		return fmt.Errorf("server error: %w", err)
+	// Start server (mTLS if not in mock mode)
+	var serverErr error
+	if !cfg.Service.MockSPIFFE && server.TLSConfig != nil {
+		serverErr = server.ListenAndServeTLS("", "")
+	} else {
+		serverErr = server.ListenAndServe()
+	}
+	if serverErr != http.ErrServerClosed {
+		return fmt.Errorf("server error: %w", serverErr)
 	}
 
 	<-done
@@ -122,7 +155,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func newOPAService(log *logger.Logger, policyDir string) (*OPAService, error) {
+func newOPAService(log *logger.Logger, policyDir string, workloadClient *spiffe.WorkloadClient) (*OPAService, error) {
 	// Read policy files from filesystem
 	userPerms, err := os.ReadFile(filepath.Join(policyDir, "user_permissions.rego"))
 	if err != nil {
@@ -155,9 +188,10 @@ func newOPAService(log *logger.Logger, policyDir string) (*OPAService, error) {
 	}
 
 	return &OPAService{
-		logger:      log,
-		query:       query,
-		decisionLog: logger.New(logger.ComponentOPADecision),
+		logger:         log,
+		query:          query,
+		decisionLog:    logger.New(logger.ComponentOPADecision),
+		workloadClient: workloadClient,
 	}, nil
 }
 
