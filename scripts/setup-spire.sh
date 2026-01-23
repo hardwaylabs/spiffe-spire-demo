@@ -21,11 +21,21 @@ fi
 
 helm repo update
 
+# Create namespaces manually to avoid Helm ownership conflicts
+echo "Creating namespaces..."
+kubectl create namespace spire-system 2>/dev/null || true
+kubectl create namespace spire-server 2>/dev/null || true
+
+# Label namespaces for Helm adoption
+kubectl label namespace spire-system app.kubernetes.io/managed-by=Helm --overwrite
+kubectl annotate namespace spire-system meta.helm.sh/release-name=spire meta.helm.sh/release-namespace=spire-system --overwrite
+kubectl label namespace spire-server app.kubernetes.io/managed-by=Helm --overwrite
+kubectl annotate namespace spire-server meta.helm.sh/release-name=spire meta.helm.sh/release-namespace=spire-system --overwrite
+
 # Phase 1: Install SPIRE CRDs first
 echo "Phase 1: Installing SPIRE CRDs..."
 helm upgrade --install spire-crds spiffe/spire-crds \
     --namespace spire-system \
-    --create-namespace \
     --wait \
     --timeout 2m
 
@@ -34,6 +44,7 @@ echo "Phase 2: Installing SPIRE components (this may take a few minutes)..."
 helm upgrade --install spire spiffe/spire \
     --namespace spire-system \
     --values "$PROJECT_ROOT/deploy/spire/values.yaml" \
+    --set global.spire.namespaces.create=false \
     --wait \
     --timeout 5m
 

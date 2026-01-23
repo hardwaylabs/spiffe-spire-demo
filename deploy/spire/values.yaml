@@ -7,15 +7,15 @@ global:
     trustDomain: demo.example.com
     clusterName: spiffe-demo
 
-    # Create namespaces
+    # Namespaces are created by setup-spire.sh to avoid Helm conflicts
     namespaces:
-      create: true
+      create: false
       system:
         name: spire-system
-        create: true
+        create: false
       server:
         name: spire-server
-        create: true
+        create: false
 
     # Disable strict mode for development
     strictMode: false
