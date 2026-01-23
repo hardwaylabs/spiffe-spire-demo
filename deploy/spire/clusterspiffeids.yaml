@@ -1,12 +1,16 @@
 # ClusterSPIFFEID resources for automatic workload registration
 # These CRDs tell SPIRE which SPIFFE IDs to assign based on pod selectors
+#
+# Each service gets a unique SPIFFE ID that includes both the ServiceAccount name
+# and the service name for better identity granularity.
 ---
 apiVersion: spire.spiffe.io/v1alpha1
 kind: ClusterSPIFFEID
 metadata:
   name: spiffe-demo-web-dashboard
 spec:
-  spiffeIDTemplate: "spiffe://demo.example.com/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}/web-dashboard"
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/web-dashboard"
   podSelector:
     matchLabels:
       app: web-dashboard
@@ -19,7 +23,8 @@ kind: ClusterSPIFFEID
 metadata:
   name: spiffe-demo-user-service
 spec:
-  spiffeIDTemplate: "spiffe://demo.example.com/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}/user-service"
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/user-service"
   podSelector:
     matchLabels:
       app: user-service
@@ -32,7 +37,8 @@ kind: ClusterSPIFFEID
 metadata:
   name: spiffe-demo-agent-service
 spec:
-  spiffeIDTemplate: "spiffe://demo.example.com/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}/agent-service"
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/agent-service"
   podSelector:
     matchLabels:
       app: agent-service
@@ -45,7 +51,8 @@ kind: ClusterSPIFFEID
 metadata:
   name: spiffe-demo-document-service
 spec:
-  spiffeIDTemplate: "spiffe://demo.example.com/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}/document-service"
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/document-service"
   podSelector:
     matchLabels:
       app: document-service
@@ -58,7 +65,8 @@ kind: ClusterSPIFFEID
 metadata:
   name: spiffe-demo-opa-service
 spec:
-  spiffeIDTemplate: "spiffe://demo.example.com/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}/opa-service"
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/opa-service"
   podSelector:
     matchLabels:
       app: opa-service

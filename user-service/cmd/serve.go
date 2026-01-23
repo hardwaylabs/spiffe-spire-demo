@@ -150,13 +150,30 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	log.Section("STARTING USER SERVICE")
 	log.Info("User Service starting", "addr", cfg.Service.Addr())
+	log.Info("Health server starting", "addr", cfg.Service.HealthAddr())
 	log.Info("Trust domain", "domain", cfg.SPIFFE.TrustDomain)
 	log.Info("Document service", "url", cfg.DocumentServiceURL)
 	log.Info("Agent service", "url", cfg.AgentServiceURL)
 	log.Info("Loaded users", "count", len(svc.store.List()))
 	log.Info("mTLS mode", "enabled", !cfg.Service.MockSPIFFE)
 
-	// Start server (mTLS if not in mock mode)
+	// Start separate plain HTTP health server for Kubernetes probes
+	healthMux := http.NewServeMux()
+	healthMux.HandleFunc("/health", svc.handleHealth)
+	healthMux.HandleFunc("/ready", svc.handleHealth)
+	healthServer := &http.Server{
+		Addr:         cfg.Service.HealthAddr(),
+		Handler:      healthMux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+	}
+	go func() {
+		if err := healthServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("Health server error", "error", err)
+		}
+	}()
+
+	// Start main server (mTLS if not in mock mode)
 	var serverErr error
 	if !cfg.Service.MockSPIFFE && server.TLSConfig != nil {
 		serverErr = server.ListenAndServeTLS("", "")
