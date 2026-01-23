@@ -10,29 +10,29 @@ Phase 2 replaces the mock SPIFFE implementation with real SPIRE infrastructure, 
 
 ## Current State (Phase 1)
 
-| Component | Implementation |
-|-----------|----------------|
-| Identity | Hardcoded SPIFFE ID strings |
-| Authentication | `X-SPIFFE-ID` HTTP header |
-| Transport | Plain HTTP |
-| Certificate Management | None |
+| Component              | Implementation              |
+| ---------------------- | --------------------------- |
+| Identity               | Hardcoded SPIFFE ID strings |
+| Authentication         | `X-SPIFFE-ID` HTTP header   |
+| Transport              | Plain HTTP                  |
+| Certificate Management | None                        |
 
 ## Target State (Phase 2)
 
-| Component | Implementation |
-|-----------|----------------|
-| Identity | X.509 SVIDs from SPIRE Agent |
-| Authentication | mTLS with peer certificate validation |
-| Transport | HTTPS with mutual TLS |
-| Certificate Management | Auto-rotation via SPIRE Workload API |
+| Component              | Implementation                        |
+| ---------------------- | ------------------------------------- |
+| Identity               | X.509 SVIDs from SPIRE Agent          |
+| Authentication         | mTLS with peer certificate validation |
+| Transport              | HTTPS with mutual TLS                 |
+| Certificate Management | Auto-rotation via SPIRE Workload API  |
 
 ---
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                        SPIRE Server                              │
+│                        SPIRE Server                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │ Registration│  │   Built-in  │  │    Trust Bundle         │  │
 │  │     API     │  │     CA      │  │    Distribution         │  │
@@ -63,7 +63,7 @@ Phase 2 replaces the mock SPIFFE implementation with real SPIRE infrastructure, 
 
 ### Trust Domain
 
-```
+```text
 spiffe://demo.example.com/
 ├── spire-server
 ├── spire-agent
@@ -119,13 +119,13 @@ helm install spire spiffe/spire \
 
 **Registration entries needed**:
 
-| Service | SPIFFE ID | Selector |
-|---------|-----------|----------|
-| web-dashboard | `spiffe://demo.example.com/web-dashboard` | `k8s:pod-label:app:web-dashboard` |
-| user-service | `spiffe://demo.example.com/user-service` | `k8s:pod-label:app:user-service` |
-| agent-service | `spiffe://demo.example.com/agent-service` | `k8s:pod-label:app:agent-service` |
+| Service          | SPIFFE ID                                    | Selector                             |
+| ---------------- | -------------------------------------------- | ------------------------------------ |
+| web-dashboard    | `spiffe://demo.example.com/web-dashboard`    | `k8s:pod-label:app:web-dashboard`    |
+| user-service     | `spiffe://demo.example.com/user-service`     | `k8s:pod-label:app:user-service`     |
+| agent-service    | `spiffe://demo.example.com/agent-service`    | `k8s:pod-label:app:agent-service`    |
 | document-service | `spiffe://demo.example.com/document-service` | `k8s:pod-label:app:document-service` |
-| opa-service | `spiffe://demo.example.com/opa-service` | `k8s:pod-label:app:opa-service` |
+| opa-service      | `spiffe://demo.example.com/opa-service`      | `k8s:pod-label:app:opa-service`      |
 
 **Example registration**:
 ```bash
@@ -526,20 +526,20 @@ The code maintains backward compatibility with mock mode.
 
 ## Timeline Estimate
 
-| Task | Effort | Dependencies |
-|------|--------|--------------|
-| Task 1: SPIRE Helm Charts | 2-3h | None |
-| Task 2: Registration Entries | 1-2h | Task 1 |
-| Task 3: go-spiffe dependency | 30m | None |
-| Task 4: FetchIdentity() | 2-3h | Task 3 |
-| Task 5: mTLS Client | 2-3h | Task 4 |
-| Task 6: mTLS Server | 2-3h | Task 4 |
-| Task 7: Identity Middleware | 1h | Task 6 |
-| Task 8: K8s Deployments | 1-2h | Task 1 |
-| Task 9: Dockerfiles | 1h | Task 8 |
-| Task 10: Health Checks | 1-2h | Task 4 |
-| Task 11: Rotation Testing | 2-3h | All above |
-| Task 12: Setup Script | 2-3h | All above |
+| Task                         | Effort | Dependencies |
+| ---------------------------- | ------ | ------------ |
+| Task 1: SPIRE Helm Charts    | 2-3h   | None         |
+| Task 2: Registration Entries | 1-2h   | Task 1       |
+| Task 3: go-spiffe dependency | 30m    | None         |
+| Task 4: FetchIdentity()      | 2-3h   | Task 3       |
+| Task 5: mTLS Client          | 2-3h   | Task 4       |
+| Task 6: mTLS Server          | 2-3h   | Task 4       |
+| Task 7: Identity Middleware  | 1h     | Task 6       |
+| Task 8: K8s Deployments      | 1-2h   | Task 1       |
+| Task 9: Dockerfiles          | 1h     | Task 8       |
+| Task 10: Health Checks       | 1-2h   | Task 4       |
+| Task 11: Rotation Testing    | 2-3h   | All above    |
+| Task 12: Setup Script        | 2-3h   | All above    |
 
 **Total estimated effort**: 18-28 hours
 
