@@ -25,11 +25,11 @@ Zero Trust is a security model based on the principle of **"never trust, always 
 
 ### Core Principles
 
-| Principle | Description | Implementation in This Demo |
-|-----------|-------------|----------------------------|
+| Principle             | Description                                                   | Implementation in This Demo                         |
+| --------------------- | ------------------------------------------------------------- | --------------------------------------------------- |
 | **Verify Explicitly** | Always authenticate and authorize based on all available data | Every service call requires mTLS + OPA policy check |
-| **Least Privilege** | Limit access to only what's needed | Permission intersection ensures minimal access |
-| **Assume Breach** | Minimize blast radius and segment access | Each service has its own SPIFFE ID |
+| **Least Privilege**   | Limit access to only what's needed                            | Permission intersection ensures minimal access      |
+| **Assume Breach**     | Minimize blast radius and segment access                      | Each service has its own SPIFFE ID                  |
 
 ### Official Resources
 
@@ -47,12 +47,12 @@ Zero Trust is a security model based on the principle of **"never trust, always 
 
 ### Key Concepts
 
-| Concept | Description |
-|---------|-------------|
-| **SPIFFE ID** | A URI that uniquely identifies a workload (e.g., `spiffe://demo.example.com/service/user-service`) |
-| **Trust Domain** | The root of trust, like a DNS domain (e.g., `demo.example.com`) |
-| **SVID** | SPIFFE Verifiable Identity Document - the credential that proves identity |
-| **Workload** | Any software system that needs an identity |
+| Concept          | Description                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| **SPIFFE ID**    | A URI that uniquely identifies a workload (e.g., `spiffe://demo.example.com/service/user-service`) |
+| **Trust Domain** | The root of trust, like a DNS domain (e.g., `demo.example.com`)                                    |
+| **SVID**         | SPIFFE Verifiable Identity Document - the credential that proves identity                          |
+| **Workload**     | Any software system that needs an identity                                                         |
 
 ### SPIFFE ID Format
 
@@ -86,7 +86,7 @@ Examples from this demo:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   SPIRE Server                       │
+│                   SPIRE Server                      │
 │  - Manages trust domain                             │
 │  - Signs SVIDs                                      │
 │  - Stores registration entries                      │
@@ -262,13 +262,13 @@ func (c *WorkloadClient) CreateHTTPClient(ctx context.Context) (*http.Client, er
 
 The `go-spiffe` library provides `tlsconfig` helpers:
 
-| Function | Purpose |
-|----------|---------|
-| `MTLSServerConfig()` | Server TLS config requiring client certs |
-| `MTLSClientConfig()` | Client TLS config presenting our cert |
-| `AuthorizeAny()` | Accept any valid SPIFFE ID |
-| `AuthorizeMemberOf()` | Only accept specific trust domains |
-| `AuthorizeID()` | Only accept specific SPIFFE IDs |
+| Function              | Purpose                                  |
+| --------------------- | ---------------------------------------- |
+| `MTLSServerConfig()`  | Server TLS config requiring client certs |
+| `MTLSClientConfig()`  | Client TLS config presenting our cert    |
+| `AuthorizeAny()`      | Accept any valid SPIFFE ID               |
+| `AuthorizeMemberOf()` | Only accept specific trust domains       |
+| `AuthorizeID()`       | Only accept specific SPIFFE IDs          |
 
 ### Official Resources
 
@@ -310,23 +310,23 @@ spec:
 
 ### Registration Components
 
-| Field | Purpose |
-|-------|---------|
-| `spiffeIDTemplate` | The SPIFFE ID to issue |
-| `podSelector` | Which pods receive this identity |
-| `namespaceSelector` | Which namespaces to search |
-| `className` | Links to SPIREControllerManager |
+| Field               | Purpose                          |
+| ------------------- | -------------------------------- |
+| `spiffeIDTemplate`  | The SPIFFE ID to issue           |
+| `podSelector`       | Which pods receive this identity |
+| `namespaceSelector` | Which namespaces to search       |
+| `className`         | Links to SPIREControllerManager  |
 
 ### Attestation Methods
 
 SPIRE supports various attestation methods:
 
-| Attestor | How it Works |
-|----------|--------------|
+| Attestor     | How it Works                               |
+| ------------ | ------------------------------------------ |
 | **k8s_psat** | Kubernetes Projected Service Account Token |
-| **k8s_sat** | Kubernetes Service Account Token |
-| **docker** | Docker container ID |
-| **unix** | Unix process UID/GID |
+| **k8s_sat**  | Kubernetes Service Account Token           |
+| **docker**   | Docker container ID                        |
+| **unix**     | Unix process UID/GID                       |
 
 ### Official Resources
 
@@ -427,12 +427,12 @@ type authzRequest struct {
 
 When an AI agent acts on behalf of a user, what permissions should it have?
 
-| Approach | Risk |
-|----------|------|
-| Agent's permissions | User data exposed to over-privileged agents |
-| User's permissions | Agent could exceed its intended capabilities |
-| Union of both | Maximum exposure, worst security |
-| **Intersection of both** | Minimum necessary permissions |
+| Approach                 | Risk                                         |
+| ------------------------ | -------------------------------------------- |
+| Agent's permissions      | User data exposed to over-privileged agents  |
+| User's permissions       | Agent could exceed its intended capabilities |
+| Union of both            | Maximum exposure, worst security             |
+| **Intersection of both** | Minimum necessary permissions                |
 
 ### The Solution: Permission Intersection
 
@@ -490,16 +490,16 @@ allow if {
 
 ### Key Files and Their Purposes
 
-| File | Purpose | Key Lines |
-|------|---------|-----------|
-| `pkg/spiffe/workload.go` | SPIFFE client for SVID fetching and mTLS | 56-102: FetchIdentity, 148-207: CreateHTTPClient/Server |
-| `pkg/config/config.go` | Viper configuration with SPIFFE settings | SPIFFEConfig struct |
-| `opa-service/policies/delegation.rego` | Authorization policy with permission intersection | 90-135: allow rules |
-| `document-service/cmd/serve.go` | Protected resource service with OPA integration | 134-170: OPA call, 195: mTLS server |
-| `user-service/cmd/serve.go` | User service with delegation support | 179: mTLS server, 254-296: access handlers |
-| `agent-service/cmd/serve.go` | Agent service for delegated access | 168: mTLS server, 266-267: delegation handling |
-| `deploy/spire/clusterspiffeids.yaml` | Workload registration for Kubernetes | ClusterSPIFFEID resources |
-| `deploy/spire/values.yaml` | SPIRE Helm chart configuration | Trust domain, CSI driver config |
+| File                                   | Purpose                                           | Key Lines                                               |
+| -------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| `pkg/spiffe/workload.go`               | SPIFFE client for SVID fetching and mTLS          | 56-102: FetchIdentity, 148-207: CreateHTTPClient/Server |
+| `pkg/config/config.go`                 | Viper configuration with SPIFFE settings          | SPIFFEConfig struct                                     |
+| `opa-service/policies/delegation.rego` | Authorization policy with permission intersection | 90-135: allow rules                                     |
+| `document-service/cmd/serve.go`        | Protected resource service with OPA integration   | 134-170: OPA call, 195: mTLS server                     |
+| `user-service/cmd/serve.go`            | User service with delegation support              | 179: mTLS server, 254-296: access handlers              |
+| `agent-service/cmd/serve.go`           | Agent service for delegated access                | 168: mTLS server, 266-267: delegation handling          |
+| `deploy/spire/clusterspiffeids.yaml`   | Workload registration for Kubernetes              | ClusterSPIFFEID resources                               |
+| `deploy/spire/values.yaml`             | SPIRE Helm chart configuration                    | Trust domain, CSI driver config                         |
 
 ### Adding a New Service
 
@@ -581,18 +581,18 @@ make test-policies
 
 ## Glossary
 
-| Term | Definition |
-|------|------------|
-| **Attestation** | The process of verifying a workload's identity |
-| **mTLS** | Mutual TLS - both parties authenticate each other |
-| **OPA** | Open Policy Agent - policy decision point |
-| **Rego** | OPA's declarative policy language |
-| **SPIFFE** | Secure Production Identity Framework for Everyone |
-| **SPIFFE ID** | URI identifying a workload (e.g., `spiffe://domain/path`) |
-| **SPIRE** | SPIFFE Runtime Environment (reference implementation) |
-| **SVID** | SPIFFE Verifiable Identity Document |
-| **Trust Domain** | The root of trust in SPIFFE (like a DNS domain) |
-| **Workload** | A software system that needs an identity |
-| **Workload API** | Unix socket interface for fetching SVIDs |
-| **X.509** | Standard format for public key certificates |
-| **Zero Trust** | Security model: "never trust, always verify" |
+| Term             | Definition                                                |
+| ---------------- | --------------------------------------------------------- |
+| **Attestation**  | The process of verifying a workload's identity            |
+| **mTLS**         | Mutual TLS - both parties authenticate each other         |
+| **OPA**          | Open Policy Agent - policy decision point                 |
+| **Rego**         | OPA's declarative policy language                         |
+| **SPIFFE**       | Secure Production Identity Framework for Everyone         |
+| **SPIFFE ID**    | URI identifying a workload (e.g., `spiffe://domain/path`) |
+| **SPIRE**        | SPIFFE Runtime Environment (reference implementation)     |
+| **SVID**         | SPIFFE Verifiable Identity Document                       |
+| **Trust Domain** | The root of trust in SPIFFE (like a DNS domain)           |
+| **Workload**     | A software system that needs an identity                  |
+| **Workload API** | Unix socket interface for fetching SVIDs                  |
+| **X.509**        | Standard format for public key certificates               |
+| **Zero Trust**   | Security model: "never trust, always verify"              |
