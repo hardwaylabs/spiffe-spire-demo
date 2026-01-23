@@ -1,0 +1,189 @@
+# Base deployment definitions
+# Image names and environment-specific config are set in overlays
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa-service
+  namespace: spiffe-demo
+  labels:
+    app: opa-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opa-service
+  template:
+    metadata:
+      labels:
+        app: opa-service
+    spec:
+      containers:
+        - name: opa-service
+          image: opa-service
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8085
+          args:
+            - serve
+            - --policy-dir=/policies
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8085"
+          volumeMounts:
+            - name: policies
+              mountPath: /policies
+      volumes:
+        - name: policies
+          configMap:
+            name: opa-policies
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-service
+  namespace: spiffe-demo
+  labels:
+    app: document-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: document-service
+  template:
+    metadata:
+      labels:
+        app: document-service
+    spec:
+      containers:
+        - name: document-service
+          image: document-service
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8084
+          args:
+            - serve
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8084"
+            - name: SPIFFE_DEMO_OPA_HOST
+              value: "opa-service"
+            - name: SPIFFE_DEMO_OPA_PORT
+              value: "8085"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: spiffe-demo
+  labels:
+    app: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: user-service
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8082
+          args:
+            - serve
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8082"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-service
+  namespace: spiffe-demo
+  labels:
+    app: agent-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-service
+  template:
+    metadata:
+      labels:
+        app: agent-service
+    spec:
+      containers:
+        - name: agent-service
+          image: agent-service
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8083
+          args:
+            - serve
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8083"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-dashboard
+  namespace: spiffe-demo
+  labels:
+    app: web-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-dashboard
+  template:
+    metadata:
+      labels:
+        app: web-dashboard
+    spec:
+      containers:
+        - name: web-dashboard
+          image: web-dashboard
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8080
+          args:
+            - serve
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8080"
