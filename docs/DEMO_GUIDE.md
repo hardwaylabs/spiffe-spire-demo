@@ -34,56 +34,103 @@ Effective Permissions = User Permissions ∩ Agent Capabilities
 
 ## Running the Demo
 
-### Option A: Quick Start (No Clone Required)
+We use [Kustomize](https://kustomize.io/) to manage different deployment modes. Each overlay provides a different configuration optimized for specific use cases.
 
-The fastest way to try the demo. No need to clone the repository.
+### Deployment Modes Overview
+
+| Mode | Images | SPIFFE | Use Case |
+|------|--------|--------|----------|
+| **mock** | ghcr.io | Mocked | Quick demo, no SPIRE required |
+| **local** | localhost/* | Real SPIRE | Local development with Kind |
+| **ghcr** | ghcr.io | Real SPIRE | Production-like with SPIRE |
+
+### Option A: Mock Mode (Quickest Demo)
+
+No SPIRE installation required. Uses mocked SPIFFE identities for demonstration.
 
 **Prerequisites:** [Kind](https://kind.sigs.k8s.io/) and [kubectl](https://kubernetes.io/docs/tasks/tools/)
 
 ```bash
-# 1. Create Kind cluster
-curl -sL https://raw.githubusercontent.com/hardwaylabs/spiffe-spire-demo/main/deploy/kind/cluster.yaml | kind create cluster --config /dev/stdin
-
-# 2. Deploy the application
-kubectl apply -f https://raw.githubusercontent.com/hardwaylabs/spiffe-spire-demo/main/deploy/k8s/namespace.yaml
-kubectl apply -f https://raw.githubusercontent.com/hardwaylabs/spiffe-spire-demo/main/deploy/k8s/opa-policies-configmap.yaml
-kubectl apply -f https://raw.githubusercontent.com/hardwaylabs/spiffe-spire-demo/main/deploy/k8s/deployments.yaml
-
-# 3. Wait for pods to be ready
-kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
-
-# 4. Open dashboard
-open http://localhost:8080
-```
-
-### Option B: Clone and Deploy (No Build Required)
-
-Clone the repo to explore the code, but use pre-built images from GitHub Container Registry.
-
-```bash
 # Clone the repository
 git clone https://github.com/hardwaylabs/spiffe-spire-demo.git
 cd spiffe-spire-demo
 
-# Create Kind cluster and deploy
+# Create Kind cluster
 ./scripts/setup-kind.sh
-kubectl apply -f deploy/k8s/
+
+# Deploy with mock overlay (no SPIRE needed)
+kubectl apply -k deploy/k8s/overlays/mock
+
+# Wait for pods to be ready
+kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
+
+# Open dashboard
+open http://localhost:30080
+```
+
+### Option B: Local Mode (Development with SPIRE)
+
+Build from source and deploy with real SPIFFE/SPIRE integration.
+
+**Prerequisites:** [Kind](https://kind.sigs.k8s.io/), [kubectl](https://kubernetes.io/docs/tasks/tools/), [Go 1.21+](https://golang.org/dl/)
+
+```bash
+# Clone and build
+git clone https://github.com/hardwaylabs/spiffe-spire-demo.git
+cd spiffe-spire-demo
+make build
+
+# Create Kind cluster with SPIRE
+./scripts/setup-kind.sh
+./scripts/install-spire.sh
+
+# Build and load Docker images into Kind
+./scripts/build-images.sh
+./scripts/load-images.sh
+
+# Deploy with local overlay (uses localhost/* images)
+kubectl apply -k deploy/k8s/overlays/local
+
+# Apply SPIFFE ID registrations
+kubectl apply -f deploy/spire/clusterspiffeids.yaml
 
 # Wait for pods and open dashboard
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
-open http://localhost:8080
+open http://localhost:30080
 ```
 
-### Option C: Development Mode (Build from Source)
+### Option C: GHCR Mode (Production-like)
 
-For contributors who want to modify the code and build locally.
+Uses pre-built images from GitHub Container Registry with real SPIRE.
 
 ```bash
 # Clone the repository
 git clone https://github.com/hardwaylabs/spiffe-spire-demo.git
 cd spiffe-spire-demo
 
-# Build all services
+# Create Kind cluster with SPIRE
+./scripts/setup-kind.sh
+./scripts/install-spire.sh
+
+# Deploy with ghcr overlay (pulls from ghcr.io)
+kubectl apply -k deploy/k8s/overlays/ghcr
+
+# Apply SPIFFE ID registrations
+kubectl apply -f deploy/spire/clusterspiffeids.yaml
+
+# Wait for pods and open dashboard
+kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
+open http://localhost:30080
+```
+
+### Option D: Local Development (No Kubernetes)
+
+Run services directly on your machine for rapid iteration.
+
+```bash
+# Clone and build
+git clone https://github.com/hardwaylabs/spiffe-spire-demo.git
+cd spiffe-spire-demo
 make build
 
 # Run locally (without Kubernetes)
@@ -95,12 +142,38 @@ open http://localhost:8080
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
-### Watch Logs (Option C only)
+### Switching Between Modes
+
+```bash
+# Delete existing deployment
+kubectl delete -k deploy/k8s/overlays/mock  # or local/ghcr
+
+# Deploy with different overlay
+kubectl apply -k deploy/k8s/overlays/local
+```
+
+### Watch Logs (Option D only)
 
 In a separate terminal:
 
 ```bash
 tail -f tmp/logs/*.log
+```
+
+### Kustomize Directory Structure
+
+```text
+deploy/k8s/
+├── base/                    # Shared resources
+│   ├── kustomization.yaml
+│   ├── namespace.yaml
+│   ├── services.yaml
+│   ├── deployments.yaml
+│   └── opa-policies-configmap.yaml
+└── overlays/
+    ├── mock/               # ghcr.io images, MOCK_SPIFFE=true
+    ├── local/              # localhost/* images, MOCK_SPIFFE=false, SPIRE
+    └── ghcr/               # ghcr.io images, MOCK_SPIFFE=false, SPIRE
 ```
 
 ## Demo Scenarios to Try

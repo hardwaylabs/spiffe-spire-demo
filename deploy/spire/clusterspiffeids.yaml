@@ -1,0 +1,75 @@
+# ClusterSPIFFEID resources for automatic workload registration
+# These CRDs tell SPIRE which SPIFFE IDs to assign based on pod selectors
+#
+# Each service gets a unique SPIFFE ID that includes both the ServiceAccount name
+# and the service name for better identity granularity.
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: spiffe-demo-web-dashboard
+spec:
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/web-dashboard"
+  podSelector:
+    matchLabels:
+      app: web-dashboard
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: spiffe-demo
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: spiffe-demo-user-service
+spec:
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/user-service"
+  podSelector:
+    matchLabels:
+      app: user-service
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: spiffe-demo
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: spiffe-demo-agent-service
+spec:
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/agent-service"
+  podSelector:
+    matchLabels:
+      app: agent-service
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: spiffe-demo
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: spiffe-demo-document-service
+spec:
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/document-service"
+  podSelector:
+    matchLabels:
+      app: document-service
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: spiffe-demo
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: spiffe-demo-opa-service
+spec:
+  className: spire-system-spire
+  spiffeIDTemplate: "spiffe://demo.example.com/service/opa-service"
+  podSelector:
+    matchLabels:
+      app: opa-service
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: spiffe-demo

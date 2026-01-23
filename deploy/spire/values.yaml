@@ -1,0 +1,60 @@
+# SPIRE Helm values for Kind development environment
+# Chart: spiffe/spire v0.27.1
+
+global:
+  spire:
+    # Our trust domain for the demo
+    trustDomain: demo.example.com
+    clusterName: spiffe-demo
+
+    # Namespaces are created by setup-spire.sh to avoid Helm conflicts
+    namespaces:
+      create: false
+      system:
+        name: spire-system
+        create: false
+      server:
+        name: spire-server
+        create: false
+
+    # Disable strict mode for development
+    strictMode: false
+
+    # CA Subject for generated certificates
+    caSubject:
+      country: US
+      organization: SPIFFE Demo
+      commonName: SPIFFE Demo CA
+
+spire-server:
+  enabled: true
+  nameOverride: server
+  kind: statefulset
+
+  # Controller manager for CRD-based registration
+  controllerManager:
+    enabled: true
+
+  # For Kind, we don't need HA
+  replicaCount: 1
+
+  # Registration entries can be created via CRDs
+  # We'll create ClusterSPIFFEID resources for our workloads
+
+spire-agent:
+  enabled: true
+  nameOverride: agent
+
+  # Socket path where workloads connect
+  socketPath: /run/spire/agent-sockets/spire-agent.sock
+
+  # For Kind, use hostPath for the socket
+  hostSocketPath: /run/spire/agent-sockets
+
+# Enable SPIFFE CSI driver for mounting SVIDs
+spiffe-csi-driver:
+  enabled: true
+
+# Enable OIDC discovery provider (useful for JWT-SVID federation later)
+spiffe-oidc-discovery-provider:
+  enabled: false

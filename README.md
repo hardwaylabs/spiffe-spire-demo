@@ -31,37 +31,37 @@ This demo showcases a document management system where:
 
 ## Quick Start
 
-### Option A: Zero-Clone (Fastest)
+### Option A: Mock Mode (Fastest Demo)
 
-No need to clone the repository. Just need [Kind](https://kind.sigs.k8s.io/) and [kubectl](https://kubernetes.io/docs/tasks/tools/).
-
-```bash
-# Create Kind cluster
-curl -sL https://raw.githubusercontent.com/hardwaylabs/spiffe-spire-demo/main/deploy/kind/cluster.yaml | kind create cluster --config /dev/stdin
-
-# Deploy the application
-kubectl apply -f https://raw.githubusercontent.com/hardwaylabs/spiffe-spire-demo/main/deploy/k8s/namespace.yaml
-kubectl apply -f https://raw.githubusercontent.com/hardwaylabs/spiffe-spire-demo/main/deploy/k8s/opa-policies-configmap.yaml
-kubectl apply -f https://raw.githubusercontent.com/hardwaylabs/spiffe-spire-demo/main/deploy/k8s/deployments.yaml
-
-# Wait for pods and open dashboard
-kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
-open http://localhost:8080
-```
-
-### Option B: Clone and Deploy
-
-Clone the repo to explore the code, using pre-built images from GitHub Container Registry.
+No SPIRE required. Uses mocked identities to demonstrate the concepts.
 
 ```bash
 git clone https://github.com/hardwaylabs/spiffe-spire-demo.git
 cd spiffe-spire-demo
 
 ./scripts/setup-kind.sh
-kubectl apply -f deploy/k8s/
+kubectl apply -k deploy/k8s/overlays/mock
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
-open http://localhost:8080
+open http://localhost:30080
 ```
+
+### Option B: Real SPIRE Integration
+
+Full SPIFFE/SPIRE integration with real X.509 SVIDs and mTLS.
+
+```bash
+git clone https://github.com/hardwaylabs/spiffe-spire-demo.git
+cd spiffe-spire-demo
+
+./scripts/setup-kind.sh
+./scripts/setup-spire.sh
+kubectl apply -k deploy/k8s/overlays/ghcr
+kubectl apply -f deploy/spire/clusterspiffeids.yaml
+kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
+open http://localhost:30080
+```
+
+See [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md) for all deployment options including local development.
 
 ## Demo Scenarios
 
@@ -94,6 +94,17 @@ open http://localhost:8080
 4. **Permission Intersection**: Agent access = User permissions ∩ Agent capabilities
 5. **Agents Cannot Act Autonomously**: Agents MUST have user delegation context
 6. **Short-Lived Credentials**: SVIDs have 1-hour TTLs and auto-rotate
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Demo Guide](docs/DEMO_GUIDE.md) | Step-by-step instructions for running the demo |
+| [Learning Guide](docs/LEARNING_GUIDE.md) | Deep dive into Zero Trust, SPIFFE/SPIRE, mTLS, and OPA |
+| [API Testing](docs/API_TESTING.md) | API endpoints and curl commands for testing |
+| [Phase 2 Integration](docs/PHASE2_SPIRE_INTEGRATION.md) | Technical details of SPIRE integration |
+| [Phase 3 Plan](docs/PHASE3_PRODUCTION_READINESS.md) | Production readiness and observability roadmap |
+| [Contributing](CONTRIBUTING.md) | Guidelines for contributors |
 
 ## Development
 
@@ -140,9 +151,16 @@ spiffe-spire-demo/
 ├── user-service/          # User workload simulation
 ├── agent-service/         # AI agent workload simulation
 ├── web-dashboard/         # Interactive demo UI
-├── deploy/                # Kubernetes manifests
+├── deploy/                # Deployment configurations
 │   ├── kind/             # Kind cluster config
-│   └── k8s/              # K8s deployments
+│   ├── k8s/              # Kustomize base and overlays
+│   │   ├── base/         # Shared K8s resources
+│   │   └── overlays/     # mock, local, ghcr variants
+│   └── spire/            # SPIRE Helm values and registrations
+├── docs/                  # Documentation
+│   ├── DEMO_GUIDE.md     # Running the demo
+│   ├── LEARNING_GUIDE.md # Zero Trust & SPIFFE deep dive
+│   └── API_TESTING.md    # API endpoints reference
 ├── scripts/              # Deployment scripts
 └── Makefile              # Build and run commands
 ```

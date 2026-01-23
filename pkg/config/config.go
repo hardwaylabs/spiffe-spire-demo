@@ -11,9 +11,15 @@ import (
 // ServiceConfig holds common service configuration
 type ServiceConfig struct {
 	Port       int    `mapstructure:"port"`
+	HealthPort int    `mapstructure:"health_port"`
 	Host       string `mapstructure:"host"`
 	MockSPIFFE bool   `mapstructure:"mock_spiffe"`
 	LogLevel   string `mapstructure:"log_level"`
+}
+
+// HealthAddr returns the health check listen address (plain HTTP)
+func (c ServiceConfig) HealthAddr() string {
+	return fmt.Sprintf("%s:%d", c.Host, c.HealthPort)
 }
 
 // SPIFFEConfig holds SPIFFE-related configuration
@@ -75,19 +81,26 @@ func setDefaults(v *viper.Viper, serviceName string) {
 	v.SetDefault("service.log_level", "info")
 
 	// Port defaults based on service name
+	// Health ports are main port + 100 for plain HTTP health checks
 	switch serviceName {
 	case "web-dashboard":
 		v.SetDefault("service.port", 8080)
+		v.SetDefault("service.health_port", 8180)
 	case "user-service":
 		v.SetDefault("service.port", 8082)
+		v.SetDefault("service.health_port", 8182)
 	case "agent-service":
 		v.SetDefault("service.port", 8083)
+		v.SetDefault("service.health_port", 8183)
 	case "document-service":
 		v.SetDefault("service.port", 8084)
+		v.SetDefault("service.health_port", 8184)
 	case "opa-service":
 		v.SetDefault("service.port", 8085)
+		v.SetDefault("service.health_port", 8185)
 	default:
 		v.SetDefault("service.port", 8080)
+		v.SetDefault("service.health_port", 8180)
 	}
 
 	// SPIFFE defaults

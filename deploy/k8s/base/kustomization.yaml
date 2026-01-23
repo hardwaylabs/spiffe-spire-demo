@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: spiffe-demo-base
+
+resources:
+  - namespace.yaml
+  - opa-policies-configmap.yaml
+  - services.yaml
+  - deployments.yaml

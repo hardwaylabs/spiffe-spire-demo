@@ -17,6 +17,7 @@ import (
 	"github.com/hardwaylabs/spiffe-spire-demo/document-service/internal/store"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/logger"
+	"github.com/hardwaylabs/spiffe-spire-demo/pkg/spiffe"
 )
 
 var serveCmd = &cobra.Command{
@@ -68,10 +69,12 @@ type OPAResponse struct {
 
 // DocumentService handles document access with authorization
 type DocumentService struct {
-	store     *store.DocumentStore
-	opaClient *http.Client
-	opaURL    string
-	log       *logger.Logger
+	store          *store.DocumentStore
+	opaClient      *http.Client
+	opaURL         string
+	log            *logger.Logger
+	workloadClient *spiffe.WorkloadClient
+	mockMode       bool
 }
 
 // jsonError writes a JSON error response
@@ -92,13 +95,42 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	log := logger.New(logger.ComponentDocService)
 
+	// Initialize SPIFFE workload client
+	spiffeCfg := spiffe.Config{
+		SocketPath:  cfg.SPIFFE.SocketPath,
+		TrustDomain: cfg.SPIFFE.TrustDomain,
+		MockMode:    cfg.Service.MockSPIFFE,
+	}
+	workloadClient := spiffe.NewWorkloadClient(spiffeCfg, log)
+
+	// Fetch identity from SPIRE Agent (unless in mock mode)
+	ctx := context.Background()
+	if !cfg.Service.MockSPIFFE {
+		identity, err := workloadClient.FetchIdentity(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to fetch SPIFFE identity: %w", err)
+		}
+		log.Info("SPIFFE identity acquired", "spiffe_id", identity.SPIFFEID)
+	} else {
+		workloadClient.SetMockIdentity("spiffe://" + cfg.SPIFFE.TrustDomain + "/service/document-service")
+	}
+
+	// Create mTLS HTTP client for OPA requests
+	opaClient := workloadClient.CreateMTLSClient(5 * time.Second)
+
+	// Determine OPA URL scheme based on mode
+	opaScheme := "http"
+	if !cfg.Service.MockSPIFFE {
+		opaScheme = "https"
+	}
+
 	svc := &DocumentService{
-		store: store.NewDocumentStore(),
-		opaClient: &http.Client{
-			Timeout: 5 * time.Second,
-		},
-		opaURL: fmt.Sprintf("http://%s:%d/v1/data/demo/authorization/decision", cfg.OPA.Host, cfg.OPA.Port),
-		log:    log,
+		store:          store.NewDocumentStore(),
+		opaClient:      opaClient,
+		opaURL:         fmt.Sprintf("%s://%s:%d/v1/data/demo/authorization/decision", opaScheme, cfg.OPA.Host, cfg.OPA.Port),
+		log:            log,
+		workloadClient: workloadClient,
+		mockMode:       cfg.Service.MockSPIFFE,
 	}
 
 	mux := http.NewServeMux()
@@ -107,12 +139,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 	mux.HandleFunc("/documents/", svc.handleDocument)
 	mux.HandleFunc("/access", svc.handleAccess)
 
-	server := &http.Server{
-		Addr:         cfg.Service.Addr(),
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-	}
+	// Wrap with SPIFFE identity middleware
+	handler := spiffe.IdentityMiddleware(cfg.Service.MockSPIFFE)(mux)
+
+	server := workloadClient.CreateHTTPServer(cfg.Service.Addr(), handler)
+	server.ReadTimeout = 10 * time.Second
+	server.WriteTimeout = 10 * time.Second
 
 	// Graceful shutdown
 	done := make(chan bool)
@@ -122,22 +154,50 @@ func runServe(cmd *cobra.Command, args []string) error {
 		<-sigCh
 
 		log.Info("Shutting down document service...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := server.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Error("Shutdown error", "error", err)
+		}
+		if err := workloadClient.Close(); err != nil {
+			log.Error("Failed to close SPIFFE workload client", "error", err)
 		}
 		close(done)
 	}()
 
 	log.Section("STARTING DOCUMENT SERVICE")
 	log.Info("Document Service starting", "addr", cfg.Service.Addr())
+	log.Info("Health server starting", "addr", cfg.Service.HealthAddr())
 	log.Info("Loaded documents", "count", len(svc.store.List()))
 	log.Info("OPA endpoint", "url", svc.opaURL)
+	log.Info("mTLS mode", "enabled", !cfg.Service.MockSPIFFE)
 
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		return fmt.Errorf("server error: %w", err)
+	// Start separate plain HTTP health server for Kubernetes probes
+	healthMux := http.NewServeMux()
+	healthMux.HandleFunc("/health", svc.handleHealth)
+	healthMux.HandleFunc("/ready", svc.handleHealth)
+	healthServer := &http.Server{
+		Addr:         cfg.Service.HealthAddr(),
+		Handler:      healthMux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+	}
+	go func() {
+		if err := healthServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("Health server error", "error", err)
+		}
+	}()
+
+	// Start main server (mTLS if not in mock mode)
+	var serverErr error
+	if !cfg.Service.MockSPIFFE && server.TLSConfig != nil {
+		serverErr = server.ListenAndServeTLS("", "")
+	} else {
+		serverErr = server.ListenAndServe()
+	}
+	if serverErr != http.ErrServerClosed {
+		return fmt.Errorf("server error: %w", serverErr)
 	}
 
 	<-done
@@ -204,8 +264,14 @@ func (s *DocumentService) handleAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get caller SPIFFE ID from header (in mock mode) or mTLS certificate
+	// In this demo, the X-SPIFFE-ID header carries the "subject" identity
+	// (which user is requesting access), while mTLS authenticates the calling service.
+	// We use the header for authorization decisions.
 	callerSPIFFEID := r.Header.Get("X-SPIFFE-ID")
+	if callerSPIFFEID == "" {
+		// Fall back to mTLS certificate if no header (e.g., direct calls)
+		callerSPIFFEID = spiffe.GetSPIFFEIDFromRequest(r)
+	}
 	if callerSPIFFEID == "" {
 		s.log.Error("No SPIFFE ID provided")
 		jsonError(w, "SPIFFE ID required", http.StatusUnauthorized)

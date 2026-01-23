@@ -1,0 +1,426 @@
+# Deployments with real SPIRE integration (mTLS enabled)
+# Prerequisites: SPIRE must be installed first with ./scripts/setup-spire.sh
+#
+# Usage:
+#   ./scripts/setup-spire.sh
+#   kubectl apply -f deploy/k8s/namespace.yaml
+#   kubectl apply -f deploy/k8s/opa-policies-configmap.yaml
+#   kubectl apply -f deploy/k8s/deployments-spire.yaml
+---
+# OPA Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa-service
+  namespace: spiffe-demo
+  labels:
+    app: opa-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opa-service
+  template:
+    metadata:
+      labels:
+        app: opa-service
+    spec:
+      containers:
+        - name: opa-service
+          image: localhost/spiffe-demo/opa-service:latest
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8085
+              name: mtls
+            - containerPort: 8185
+              name: health
+          args:
+            - serve
+            - --policy-dir=/policies
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8085"
+            - name: SPIFFE_DEMO_SERVICE_HEALTH_PORT
+              value: "8185"
+            - name: SPIFFE_DEMO_SERVICE_MOCK_SPIFFE
+              value: "false"
+            - name: SPIFFE_DEMO_SPIFFE_SOCKET_PATH
+              value: "unix:///run/spire/agent-sockets/spire-agent.sock"
+          volumeMounts:
+            - name: policies
+              mountPath: /policies
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8185
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8185
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: policies
+          configMap:
+            name: opa-policies
+        - name: spire-agent-socket
+          csi:
+            driver: "csi.spiffe.io"
+            readOnly: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa-service
+  namespace: spiffe-demo
+spec:
+  type: ClusterIP
+  selector:
+    app: opa-service
+  ports:
+    - port: 8085
+      targetPort: 8085
+---
+# Document Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-service
+  namespace: spiffe-demo
+  labels:
+    app: document-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: document-service
+  template:
+    metadata:
+      labels:
+        app: document-service
+    spec:
+      containers:
+        - name: document-service
+          image: localhost/spiffe-demo/document-service:latest
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8084
+              name: mtls
+            - containerPort: 8184
+              name: health
+          args:
+            - serve
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8084"
+            - name: SPIFFE_DEMO_SERVICE_HEALTH_PORT
+              value: "8184"
+            - name: SPIFFE_DEMO_SERVICE_MOCK_SPIFFE
+              value: "false"
+            - name: SPIFFE_DEMO_SPIFFE_SOCKET_PATH
+              value: "unix:///run/spire/agent-sockets/spire-agent.sock"
+            - name: SPIFFE_DEMO_OPA_HOST
+              value: "opa-service"
+            - name: SPIFFE_DEMO_OPA_PORT
+              value: "8085"
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8184
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8184
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: spire-agent-socket
+          csi:
+            driver: "csi.spiffe.io"
+            readOnly: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-service
+  namespace: spiffe-demo
+spec:
+  type: ClusterIP
+  selector:
+    app: document-service
+  ports:
+    - port: 8084
+      targetPort: 8084
+---
+# User Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: spiffe-demo
+  labels:
+    app: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: localhost/spiffe-demo/user-service:latest
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8082
+              name: mtls
+            - containerPort: 8182
+              name: health
+          args:
+            - serve
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8082"
+            - name: SPIFFE_DEMO_SERVICE_HEALTH_PORT
+              value: "8182"
+            - name: SPIFFE_DEMO_SERVICE_MOCK_SPIFFE
+              value: "false"
+            - name: SPIFFE_DEMO_SPIFFE_SOCKET_PATH
+              value: "unix:///run/spire/agent-sockets/spire-agent.sock"
+            - name: SPIFFE_DEMO_DOCUMENT_SERVICE_URL
+              value: "https://document-service:8084"
+            - name: SPIFFE_DEMO_AGENT_SERVICE_URL
+              value: "https://agent-service:8083"
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8182
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8182
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: spire-agent-socket
+          csi:
+            driver: "csi.spiffe.io"
+            readOnly: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: spiffe-demo
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+---
+# Agent Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-service
+  namespace: spiffe-demo
+  labels:
+    app: agent-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-service
+  template:
+    metadata:
+      labels:
+        app: agent-service
+    spec:
+      containers:
+        - name: agent-service
+          image: localhost/spiffe-demo/agent-service:latest
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8083
+              name: mtls
+            - containerPort: 8183
+              name: health
+          args:
+            - serve
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8083"
+            - name: SPIFFE_DEMO_SERVICE_HEALTH_PORT
+              value: "8183"
+            - name: SPIFFE_DEMO_SERVICE_MOCK_SPIFFE
+              value: "false"
+            - name: SPIFFE_DEMO_SPIFFE_SOCKET_PATH
+              value: "unix:///run/spire/agent-sockets/spire-agent.sock"
+            - name: SPIFFE_DEMO_DOCUMENT_SERVICE_URL
+              value: "https://document-service:8084"
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8183
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8183
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: spire-agent-socket
+          csi:
+            driver: "csi.spiffe.io"
+            readOnly: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-service
+  namespace: spiffe-demo
+spec:
+  type: ClusterIP
+  selector:
+    app: agent-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+---
+# Web Dashboard
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-dashboard
+  namespace: spiffe-demo
+  labels:
+    app: web-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-dashboard
+  template:
+    metadata:
+      labels:
+        app: web-dashboard
+    spec:
+      containers:
+        - name: web-dashboard
+          image: localhost/spiffe-demo/web-dashboard:latest
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 8080
+          args:
+            - serve
+          env:
+            - name: SPIFFE_DEMO_SERVICE_PORT
+              value: "8080"
+            - name: SPIFFE_DEMO_SERVICE_MOCK_SPIFFE
+              value: "false"
+            - name: SPIFFE_DEMO_SPIFFE_SOCKET_PATH
+              value: "unix:///run/spire/agent-sockets/spire-agent.sock"
+            - name: SPIFFE_DEMO_USER_SERVICE_URL
+              value: "https://user-service:8082"
+            - name: SPIFFE_DEMO_AGENT_SERVICE_URL
+              value: "https://agent-service:8083"
+            - name: SPIFFE_DEMO_DOCUMENT_SERVICE_URL
+              value: "https://document-service:8084"
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: spire-agent-socket
+          csi:
+            driver: "csi.spiffe.io"
+            readOnly: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-dashboard
+  namespace: spiffe-demo
+spec:
+  type: NodePort
+  selector:
+    app: web-dashboard
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
