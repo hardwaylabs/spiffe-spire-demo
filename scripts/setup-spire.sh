@@ -46,7 +46,7 @@ helm upgrade --install spire spiffe/spire \
     --values "$PROJECT_ROOT/deploy/spire/values.yaml" \
     --set global.spire.namespaces.create=false \
     --wait \
-    --timeout 5m
+    --timeout 10m
 
 echo "Waiting for SPIRE server to be ready..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=server -n spire-server --timeout=120s
