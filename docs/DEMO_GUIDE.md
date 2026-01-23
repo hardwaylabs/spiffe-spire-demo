@@ -38,11 +38,11 @@ We use [Kustomize](https://kustomize.io/) to manage different deployment modes. 
 
 ### Deployment Modes Overview
 
-| Mode | Images | SPIFFE | Use Case |
-|------|--------|--------|----------|
-| **mock** | ghcr.io | Mocked | Quick demo, no SPIRE required |
-| **local** | localhost/* | Real SPIRE | Local development with Kind |
-| **ghcr** | ghcr.io | Real SPIRE | Production-like with SPIRE |
+| Mode      | Images      | SPIFFE     | Use Case                      |
+| --------- | ----------- | ---------- | ----------------------------- |
+| **mock**  | ghcr.io     | Mocked     | Quick demo, no SPIRE required |
+| **local** | localhost/* | Real SPIRE | Local development with Kind   |
+| **ghcr**  | ghcr.io     | Real SPIRE | Production-like with SPIRE    |
 
 ### Option A: Mock Mode (Quickest Demo)
 
@@ -65,7 +65,7 @@ kubectl apply -k deploy/k8s/overlays/mock
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
 
 # Open dashboard
-open http://localhost:30080
+open http://localhost:8080
 ```
 
 ### Option B: Local Mode (Development with SPIRE)
@@ -82,7 +82,7 @@ make build
 
 # Create Kind cluster with SPIRE
 ./scripts/setup-kind.sh
-./scripts/install-spire.sh
+./scripts/setup-spire.sh
 
 # Build and load Docker images into Kind
 ./scripts/build-images.sh
@@ -91,12 +91,9 @@ make build
 # Deploy with local overlay (uses localhost/* images)
 kubectl apply -k deploy/k8s/overlays/local
 
-# Apply SPIFFE ID registrations
-kubectl apply -f deploy/spire/clusterspiffeids.yaml
-
 # Wait for pods and open dashboard
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
-open http://localhost:30080
+open http://localhost:8080
 ```
 
 ### Option C: GHCR Mode (Production-like)
@@ -110,17 +107,14 @@ cd spiffe-spire-demo
 
 # Create Kind cluster with SPIRE
 ./scripts/setup-kind.sh
-./scripts/install-spire.sh
+./scripts/setup-spire.sh
 
 # Deploy with ghcr overlay (pulls from ghcr.io)
 kubectl apply -k deploy/k8s/overlays/ghcr
 
-# Apply SPIFFE ID registrations
-kubectl apply -f deploy/spire/clusterspiffeids.yaml
-
 # Wait for pods and open dashboard
 kubectl -n spiffe-demo wait --for=condition=ready pod --all --timeout=120s
-open http://localhost:30080
+open http://localhost:8080
 ```
 
 ### Option D: Local Development (No Kubernetes)
