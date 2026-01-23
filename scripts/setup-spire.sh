@@ -21,16 +21,13 @@ fi
 
 helm repo update
 
-# Create namespaces manually to avoid Helm ownership conflicts
-echo "Creating namespaces..."
+# Create namespace manually to avoid Helm ownership conflicts
+echo "Creating namespace..."
 kubectl create namespace spire-system 2>/dev/null || true
-kubectl create namespace spire-server 2>/dev/null || true
 
-# Label namespaces for Helm adoption
+# Label namespace for Helm adoption
 kubectl label namespace spire-system app.kubernetes.io/managed-by=Helm --overwrite
 kubectl annotate namespace spire-system meta.helm.sh/release-name=spire meta.helm.sh/release-namespace=spire-system --overwrite
-kubectl label namespace spire-server app.kubernetes.io/managed-by=Helm --overwrite
-kubectl annotate namespace spire-server meta.helm.sh/release-name=spire meta.helm.sh/release-namespace=spire-system --overwrite
 
 # Phase 1: Install SPIRE CRDs first
 echo "Phase 1: Installing SPIRE CRDs..."
@@ -49,7 +46,7 @@ helm upgrade --install spire spiffe/spire \
     --timeout 10m
 
 echo "Waiting for SPIRE server to be ready..."
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=server -n spire-server --timeout=120s
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=server -n spire-system --timeout=120s
 
 echo "Waiting for SPIRE agents to be ready..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=agent -n spire-system --timeout=120s
@@ -60,12 +57,12 @@ kubectl apply -f "$PROJECT_ROOT/deploy/spire/clusterspiffeids.yaml"
 echo ""
 echo "=== SPIRE setup complete ==="
 echo ""
-echo "SPIRE Server: running in spire-server namespace"
+echo "SPIRE Server: running in spire-system namespace"
 echo "SPIRE Agents: running in spire-system namespace"
 echo "Trust Domain: demo.example.com"
 echo ""
 echo "To verify SPIRE is working:"
-echo "  kubectl exec -n spire-server spire-server-0 -- spire-server entry show"
+echo "  kubectl exec -n spire-system spire-server-0 -c spire-server -- spire-server entry show"
 echo ""
 echo "Next step: Deploy the demo application with:"
 echo "  kubectl apply -f deploy/k8s/namespace.yaml"
