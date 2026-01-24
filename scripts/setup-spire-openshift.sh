@@ -43,47 +43,60 @@ fi
 helm repo update
 
 # Create namespace
-echo "Creating namespace..."
+echo "Phase 1: Creating spire-system namespace..."
 oc create namespace spire-system 2>/dev/null || true
 
 # Label namespace for Helm adoption
 oc label namespace spire-system app.kubernetes.io/managed-by=Helm --overwrite
 oc annotate namespace spire-system meta.helm.sh/release-name=spire meta.helm.sh/release-namespace=spire-system --overwrite
 
-# Phase 1: Install SPIRE CRDs first
-echo "Phase 1: Installing SPIRE CRDs..."
+# Install SPIRE CRDs first
+echo "Phase 2: Installing SPIRE CRDs..."
 helm upgrade --install spire-crds spiffe/spire-crds \
     --namespace spire-system \
     --wait \
     --timeout 2m
 
-# Phase 2: Install SPIRE components (without --wait, as pods will fail initially)
-# This creates the service accounts we need for SCC binding
-echo "Phase 2: Installing SPIRE components (pods will fail initially due to SCC)..."
-helm upgrade --install spire spiffe/spire \
-    --namespace spire-system \
-    --values "$PROJECT_ROOT/deploy/spire/values-openshift.yaml" \
-    --set global.spire.namespaces.create=false \
-    --timeout 5m \
-    --wait=false || true
+# Pre-create service accounts and grant SCC BEFORE Helm install
+# This avoids the chicken-and-egg problem where pods can't start without SCC
+echo "Phase 3: Pre-creating service accounts and granting SCC..."
+cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spire-server
+  namespace: spire-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spire-agent
+  namespace: spire-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spire-spiffe-csi-driver
+  namespace: spire-system
+EOF
 
-# Wait for service accounts to be created
-echo "Waiting for service accounts to be created..."
-sleep 5
-
-# Phase 3: Grant SCC permissions to SPIRE service accounts
+# Grant SCC permissions to SPIRE service accounts
 # - spire-server needs 'anyuid' for specific user IDs
 # - spire-agent needs 'privileged' for hostNetwork, hostPID, hostPath
 # - spiffe-csi-driver needs 'privileged' for privileged containers and hostPath
-echo "Phase 3: Granting SCC to SPIRE service accounts..."
 oc adm policy add-scc-to-user anyuid -z spire-server -n spire-system
 oc adm policy add-scc-to-user privileged -z spire-agent -n spire-system
 oc adm policy add-scc-to-user privileged -z spire-spiffe-csi-driver -n spire-system
 
-# Phase 4: Restart StatefulSets and DaemonSets to pick up SCC
-echo "Phase 4: Restarting SPIRE components to apply SCC..."
-oc rollout restart statefulset/spire-server -n spire-system 2>/dev/null || true
-oc rollout restart daemonset/spire-agent -n spire-system 2>/dev/null || true
+# Install SPIRE components with OpenShift-specific values
+echo "Phase 4: Installing SPIRE components..."
+helm upgrade --install spire spiffe/spire \
+    --namespace spire-system \
+    --values "$PROJECT_ROOT/deploy/spire/values-openshift.yaml" \
+    --set global.spire.namespaces.create=false \
+    --set global.installAndUpgradeHooks.enabled=false \
+    --timeout 5m \
+    --wait
 
 echo "Waiting for SPIRE server to be ready..."
 oc wait --for=condition=ready pod -l app.kubernetes.io/name=server -n spire-system --timeout=180s
@@ -91,13 +104,11 @@ oc wait --for=condition=ready pod -l app.kubernetes.io/name=server -n spire-syst
 echo "Waiting for SPIRE agents to be ready..."
 oc wait --for=condition=ready pod -l app.kubernetes.io/name=agent -n spire-system --timeout=180s
 
-echo "Applying ClusterSPIFFEID registrations for demo workloads..."
+echo "Phase 5: Applying ClusterSPIFFEID registrations for demo workloads..."
 oc apply -f "$PROJECT_ROOT/deploy/spire/clusterspiffeids.yaml"
 
-# Phase 5: Prepare demo namespace with SCC
-# The demo pods use init containers with 'chcon' to relabel SELinux contexts
-# See: https://github.com/spiffe/spiffe-csi/issues/54
-echo "Phase 5: Creating spiffe-demo namespace and granting SCC..."
+# Prepare demo namespace with SCC
+echo "Phase 6: Creating spiffe-demo namespace and granting SCC..."
 oc create namespace spiffe-demo 2>/dev/null || true
 oc label namespace spiffe-demo \
     pod-security.kubernetes.io/enforce=privileged \
