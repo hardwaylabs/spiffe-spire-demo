@@ -155,7 +155,7 @@ cd spiffe-spire-demo
 ./scripts/deploy-openshift.sh
 
 # Get the dashboard URL (Route is created automatically)
-oc get route web-dashboard -n spiffe-demo -o jsonpath='{.spec.host}'
+oc get route web-dashboard -n spiffe-demo -o jsonpath='https://{.spec.host}{"\n"}'
 ```
 
 **OpenShift-specific features:**
