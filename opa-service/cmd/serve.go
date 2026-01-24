@@ -17,6 +17,7 @@ import (
 
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/logger"
+	"github.com/hardwaylabs/spiffe-spire-demo/pkg/metrics"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/spiffe"
 )
 
@@ -285,6 +286,7 @@ func (s *OPAService) handleDecision(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *OPAService) evaluate(ctx context.Context, input PolicyInput) (*PolicyDecision, error) {
+	start := time.Now()
 	evalLog := logger.New(logger.ComponentOPAEval)
 
 	// Convert input to map for OPA
@@ -336,6 +338,20 @@ func (s *OPAService) evaluate(ctx context.Context, input PolicyInput) (*PolicyDe
 	if details, ok := resultMap["details"].(map[string]interface{}); ok {
 		decision.Details = details
 	}
+
+	// Record metrics
+	duration := time.Since(start).Seconds()
+	metrics.AuthorizationDuration.WithLabelValues("opa-service").Observe(duration)
+
+	decisionLabel := "deny"
+	if decision.Allow {
+		decisionLabel = "allow"
+	}
+	callerType := "user"
+	if input.Delegation != nil {
+		callerType = "delegated"
+	}
+	metrics.AuthorizationDecisions.WithLabelValues("opa-service", decisionLabel, callerType).Inc()
 
 	return decision, nil
 }

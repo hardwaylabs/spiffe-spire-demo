@@ -18,6 +18,7 @@ import (
 	"github.com/hardwaylabs/spiffe-spire-demo/agent-service/internal/store"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/logger"
+	"github.com/hardwaylabs/spiffe-spire-demo/pkg/metrics"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/spiffe"
 )
 
@@ -249,6 +250,7 @@ func (s *AgentService) handleDelegatedAccess(w http.ResponseWriter, r *http.Requ
 		s.log.Section("AUTONOMOUS AGENT ACCESS ATTEMPT")
 		s.log.Error("No user SPIFFE ID provided - agents cannot act autonomously")
 		s.log.Deny("Agent requests require user delegation context")
+		metrics.AuthorizationDecisions.WithLabelValues("agent-service", "deny", "autonomous").Inc()
 
 		// Return a proper JSON response for the dashboard
 		w.Header().Set("Content-Type", "application/json")
@@ -276,9 +278,17 @@ func (s *AgentService) handleDelegatedAccess(w http.ResponseWriter, r *http.Requ
 	result, err := s.accessDocumentDelegated(r.Context(), agent, req.UserSPIFFEID, req.DocumentID)
 	if err != nil {
 		s.log.Error("Delegated access failed", "error", err)
+		metrics.AuthorizationDecisions.WithLabelValues("agent-service", "error", "delegated").Inc()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Record metrics
+	decision := "allow"
+	if !result.Granted {
+		decision = "deny"
+	}
+	metrics.AuthorizationDecisions.WithLabelValues("agent-service", decision, "delegated").Inc()
 
 	w.Header().Set("Content-Type", "application/json")
 	if !result.Granted {
