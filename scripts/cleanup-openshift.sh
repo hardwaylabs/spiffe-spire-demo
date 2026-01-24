@@ -4,6 +4,18 @@ set -e
 
 echo "=== Cleaning up SPIFFE/SPIRE demo on OpenShift ==="
 
+# Check if oc CLI is installed
+if ! command -v oc &> /dev/null; then
+    echo "ERROR: oc CLI is not installed. Please install the OpenShift CLI first."
+    exit 1
+fi
+
+# Check if helm is installed
+if ! command -v helm &> /dev/null; then
+    echo "ERROR: helm is not installed. Please install helm first."
+    exit 1
+fi
+
 # Delete demo namespace
 echo "Deleting spiffe-demo namespace..."
 oc delete namespace spiffe-demo --ignore-not-found --timeout=60s || true

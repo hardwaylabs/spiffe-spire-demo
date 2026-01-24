@@ -8,6 +8,12 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 echo "=== Deploying SPIFFE demo to OpenShift ==="
 
+# Check if oc CLI is installed
+if ! command -v oc &> /dev/null; then
+    echo "ERROR: oc CLI is not installed. Please install the OpenShift CLI first."
+    exit 1
+fi
+
 # Check if SPIRE is running
 echo "Checking SPIRE status..."
 if ! oc get pods -n spire-system -l app.kubernetes.io/name=server 2>/dev/null | grep -q Running; then

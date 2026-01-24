@@ -162,7 +162,7 @@ open http://localhost:8080
 **OpenShift-specific features:**
 - Grants `privileged` SCC to SPIRE agent and CSI driver
 - Grants `anyuid` SCC to SPIRE server
-- Uses SELinux relabel init containers for CSI socket access
+- Sets SELinux `spc_t` context on workloads to allow CSI socket access
 - Sets `pod-security.kubernetes.io/enforce: privileged` on demo namespace
 
 ### Switching Between Modes
@@ -366,6 +366,6 @@ Press `Ctrl+C` in the terminal running `run-local.sh`.
 **OpenShift socket permission denied?**
 
 - This is usually SELinux blocking access to CSI-mounted sockets
-- The OpenShift overlay includes init containers that run `chcon` to relabel the socket
+- The OpenShift overlay sets SELinux `spc_t` context on workloads to allow CSI socket access
 - Ensure the `privileged` SCC is granted to the default service account: `oc adm policy add-scc-to-user privileged -z default -n spiffe-demo`
 - Re-run the setup script: `./scripts/setup-spire-openshift.sh`
