@@ -151,12 +151,8 @@ cd spiffe-spire-demo
 # Setup SPIRE on OpenShift (handles SCC and SELinux)
 ./scripts/setup-spire-openshift.sh
 
-# Deploy with OpenShift overlay
-oc apply -k deploy/k8s/overlays/openshift
-
-# Wait for pods and check status
-oc -n spiffe-demo wait --for=condition=ready pod --all --timeout=180s
-oc -n spiffe-demo get pods
+# Deploy the demo application (applies SCC after namespace is created)
+./scripts/deploy-openshift.sh
 
 # Port-forward to access dashboard
 oc -n spiffe-demo port-forward svc/web-dashboard 8080:80 &
