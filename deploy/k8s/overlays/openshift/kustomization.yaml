@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: spiffe-demo-openshift
+
+# Build on top of the ghcr overlay
+resources:
+  - ../ghcr
+
+patches:
+  # OpenShift requires privileged pod security level for CSI driver inline volumes
+  - target:
+      kind: Namespace
+      name: spiffe-demo
+    patch: |-
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1enforce
+        value: privileged
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1audit
+        value: privileged
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1warn
+        value: privileged

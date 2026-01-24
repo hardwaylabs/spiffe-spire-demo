@@ -1,0 +1,65 @@
+# SPIRE Helm values for OpenShift environment
+# Chart: spiffe/spire v0.27.1
+#
+# OpenShift requires special handling for Security Context Constraints (SCC).
+# The setup-spire-openshift.sh script grants 'anyuid' SCC to SPIRE service accounts.
+
+global:
+  spire:
+    # Our trust domain for the demo
+    trustDomain: demo.example.com
+    clusterName: spiffe-demo
+
+    # Namespaces are created by setup script to avoid Helm conflicts
+    namespaces:
+      create: false
+      system:
+        name: spire-system
+        create: false
+      server:
+        name: spire-server
+        create: false
+
+    # Disable strict mode for development
+    strictMode: false
+
+    # CA Subject for generated certificates
+    caSubject:
+      country: US
+      organization: SPIFFE Demo
+      commonName: SPIFFE Demo CA
+
+spire-server:
+  enabled: true
+  nameOverride: server
+  kind: statefulset
+
+  # Controller manager for CRD-based registration
+  controllerManager:
+    enabled: true
+
+  # Single replica for demo
+  replicaCount: 1
+
+  # OpenShift-specific: Don't set securityContext at pod level
+  # Let OpenShift assign UIDs, but we need anyuid SCC for the specific UIDs SPIRE needs
+  podSecurityContext:
+    fsGroup: 1000
+
+spire-agent:
+  enabled: true
+  nameOverride: agent
+
+  # Socket path where workloads connect
+  socketPath: /run/spire/agent-sockets/spire-agent.sock
+
+  # For OpenShift, use hostPath for the socket
+  hostSocketPath: /run/spire/agent-sockets
+
+# Enable SPIFFE CSI driver for mounting SVIDs
+spiffe-csi-driver:
+  enabled: true
+
+# Disable OIDC discovery provider
+spiffe-oidc-discovery-provider:
+  enabled: false
