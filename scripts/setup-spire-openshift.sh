@@ -59,6 +59,7 @@ helm upgrade --install spire-crds spiffe/spire-crds \
 
 # Pre-create service accounts and grant SCC BEFORE Helm install
 # This avoids the chicken-and-egg problem where pods can't start without SCC
+# Service accounts need Helm labels so Helm can adopt them
 echo "Phase 3: Pre-creating service accounts and granting SCC..."
 cat <<EOF | oc apply -f -
 apiVersion: v1
@@ -66,18 +67,33 @@ kind: ServiceAccount
 metadata:
   name: spire-server
   namespace: spire-system
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: spire
+    meta.helm.sh/release-namespace: spire-system
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: spire-agent
   namespace: spire-system
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: spire
+    meta.helm.sh/release-namespace: spire-system
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: spire-spiffe-csi-driver
   namespace: spire-system
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: spire
+    meta.helm.sh/release-namespace: spire-system
 EOF
 
 # Grant SCC permissions to SPIRE service accounts
