@@ -49,6 +49,6 @@ echo ""
 oc get pods -n spiffe-demo
 echo ""
 echo "To access the dashboard:"
-echo "  oc -n spiffe-demo port-forward svc/web-dashboard 8080:80 &"
+echo "  oc -n spiffe-demo port-forward svc/web-dashboard 8080:8080 &"
 echo "  open http://localhost:8080"
 echo ""

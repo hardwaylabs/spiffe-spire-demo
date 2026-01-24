@@ -155,7 +155,7 @@ cd spiffe-spire-demo
 ./scripts/deploy-openshift.sh
 
 # Port-forward to access dashboard
-oc -n spiffe-demo port-forward svc/web-dashboard 8080:80 &
+oc -n spiffe-demo port-forward svc/web-dashboard 8080:8080 &
 open http://localhost:8080
 ```
 
