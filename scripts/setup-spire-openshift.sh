@@ -20,9 +20,16 @@ if ! command -v helm &> /dev/null; then
     exit 1
 fi
 
-# Check if user can grant SCC
+# Check if user can grant required SCCs
 if ! oc auth can-i use scc/anyuid &> /dev/null; then
     echo "ERROR: You don't have permission to grant 'anyuid' SCC."
+    echo "Please ask a cluster administrator to run this script or grant you the permission."
+    exit 1
+fi
+
+if ! oc auth can-i use scc/privileged &> /dev/null; then
+    echo "ERROR: You don't have permission to grant 'privileged' SCC."
+    echo "SPIRE agent and CSI driver require privileged access for hostNetwork, hostPID, and hostPath."
     echo "Please ask a cluster administrator to run this script or grant you the permission."
     exit 1
 fi
@@ -65,11 +72,13 @@ echo "Waiting for service accounts to be created..."
 sleep 5
 
 # Phase 3: Grant SCC permissions to SPIRE service accounts
-# SPIRE requires specific user IDs that OpenShift's restricted SCC doesn't allow
-echo "Phase 3: Granting 'anyuid' SCC to SPIRE service accounts..."
+# - spire-server needs 'anyuid' for specific user IDs
+# - spire-agent needs 'privileged' for hostNetwork, hostPID, hostPath
+# - spiffe-csi-driver needs 'privileged' for privileged containers and hostPath
+echo "Phase 3: Granting SCC to SPIRE service accounts..."
 oc adm policy add-scc-to-user anyuid -z spire-server -n spire-system
-oc adm policy add-scc-to-user anyuid -z spire-agent -n spire-system
-oc adm policy add-scc-to-user anyuid -z spire-spiffe-csi-driver -n spire-system
+oc adm policy add-scc-to-user privileged -z spire-agent -n spire-system
+oc adm policy add-scc-to-user privileged -z spire-spiffe-csi-driver -n spire-system
 
 # Phase 4: Restart StatefulSets and DaemonSets to pick up SCC
 echo "Phase 4: Restarting SPIRE components to apply SCC..."
