@@ -18,6 +18,7 @@ import (
 	"github.com/hardwaylabs/spiffe-spire-demo/document-service/internal/store"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/logger"
+	"github.com/hardwaylabs/spiffe-spire-demo/pkg/metrics"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/spiffe"
 )
 
@@ -302,8 +303,15 @@ func (s *DocumentService) handleAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Determine caller type for metrics
+	callerType := "user"
+	if req.Delegation != nil {
+		callerType = "delegated"
+	}
+
 	if !allowed {
 		s.log.Deny(reason)
+		metrics.AuthorizationDecisions.WithLabelValues("document-service", "deny", callerType).Inc()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -314,6 +322,7 @@ func (s *DocumentService) handleAccess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.log.Allow(reason)
+	metrics.AuthorizationDecisions.WithLabelValues("document-service", "allow", callerType).Inc()
 	s.log.Document(doc.ID, "Returning document content")
 
 	w.Header().Set("Content-Type", "application/json")

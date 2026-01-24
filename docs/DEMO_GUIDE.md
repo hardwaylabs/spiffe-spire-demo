@@ -275,15 +275,15 @@ All services expose Prometheus metrics on their health port:
 | web-dashboard    | `http://localhost:8080/metrics`  |
 
 **Available metrics:**
-- `spiffe_demo_svid_expiration_seconds` - Time until SVID expires
-- `spiffe_demo_svid_rotations_total` - SVID rotation count
-- `spiffe_demo_http_request_duration_seconds` - Request latency
-- `spiffe_demo_authorization_decisions_total` - Allow/deny counts
-- `spiffe_demo_delegations_total` - Delegation attempts
+- `spiffe_demo_authorization_decisions_total` - Allow/deny counts by service
+- `spiffe_demo_authorization_duration_seconds` - OPA policy evaluation latency
+- `spiffe_demo_delegations_total` - Delegation attempts by user/agent
+
+> **Note:** Metrics only appear after activity. Try some access requests first, then check metrics.
 
 **Example:**
 ```bash
-curl http://localhost:8182/metrics | grep spiffe_demo
+curl http://localhost:8184/metrics | grep spiffe_demo
 ```
 
 ### Structured JSON Logging

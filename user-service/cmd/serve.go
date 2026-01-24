@@ -17,6 +17,7 @@ import (
 
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/config"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/logger"
+	"github.com/hardwaylabs/spiffe-spire-demo/pkg/metrics"
 	"github.com/hardwaylabs/spiffe-spire-demo/pkg/spiffe"
 	"github.com/hardwaylabs/spiffe-spire-demo/user-service/internal/store"
 )
@@ -301,9 +302,17 @@ func (s *UserService) handleDelegate(w http.ResponseWriter, r *http.Request) {
 	result, err := s.delegateToAgent(r.Context(), user, req.AgentID, req.DocumentID)
 	if err != nil {
 		s.log.Error("Delegation failed", "error", err)
+		metrics.DelegationsTotal.WithLabelValues(req.UserID, req.AgentID, "error").Inc()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Record delegation metrics
+	delegationResult := "success"
+	if !result.Granted {
+		delegationResult = "denied"
+	}
+	metrics.DelegationsTotal.WithLabelValues(req.UserID, req.AgentID, delegationResult).Inc()
 
 	w.Header().Set("Content-Type", "application/json")
 	if !result.Granted {
