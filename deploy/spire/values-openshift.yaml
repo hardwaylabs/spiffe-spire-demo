@@ -5,6 +5,8 @@
 # The setup-spire-openshift.sh script grants 'anyuid' SCC to SPIRE service accounts.
 
 global:
+  # Enable OpenShift-specific configuration
+  openshift: true
   spire:
     # Our trust domain for the demo
     trustDomain: demo.example.com
@@ -55,6 +57,18 @@ spire-agent:
 
   # For OpenShift, use hostPath for the socket
   hostSocketPath: /run/spire/agent-sockets
+
+  # OpenShift k8s workload attestor configuration
+  # The kubelet on OpenShift is not accessible on localhost - we need to use the node IP
+  # See: https://github.com/spiffe/spire/blob/main/doc/plugin_agent_workloadattestor_k8s.md
+  workloadAttestors:
+    k8s:
+      # Skip kubelet verification since OpenShift kubelet certs may not match
+      skipKubeletVerification: true
+      # Use the node name from the downward API to reach the kubelet
+      # This requires the agent to have the NODE_NAME env var set
+      useNewContainerLocator: true
+      verboseContainerLocatorLogs: false
 
 # Enable SPIFFE CSI driver for mounting SVIDs
 spiffe-csi-driver:
