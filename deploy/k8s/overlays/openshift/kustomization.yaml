@@ -23,3 +23,89 @@ patches:
       - op: add
         path: /metadata/labels/pod-security.kubernetes.io~1warn
         value: privileged
+
+  # SELinux relabel init container for OPA Service
+  # See: https://github.com/spiffe/spiffe-csi/issues/54
+  - target:
+      kind: Deployment
+      name: opa-service
+    patch: |-
+      - op: add
+        path: /spec/template/spec/initContainers
+        value:
+          - name: selinux-relabel
+            image: registry.access.redhat.com/ubi9/ubi:latest
+            command: ["chcon", "-Rt", "container_file_t", "/run/spire/agent-sockets"]
+            securityContext:
+              privileged: true
+            volumeMounts:
+              - name: spire-agent-socket
+                mountPath: /run/spire/agent-sockets
+
+  # SELinux relabel init container for Document Service
+  - target:
+      kind: Deployment
+      name: document-service
+    patch: |-
+      - op: add
+        path: /spec/template/spec/initContainers
+        value:
+          - name: selinux-relabel
+            image: registry.access.redhat.com/ubi9/ubi:latest
+            command: ["chcon", "-Rt", "container_file_t", "/run/spire/agent-sockets"]
+            securityContext:
+              privileged: true
+            volumeMounts:
+              - name: spire-agent-socket
+                mountPath: /run/spire/agent-sockets
+
+  # SELinux relabel init container for User Service
+  - target:
+      kind: Deployment
+      name: user-service
+    patch: |-
+      - op: add
+        path: /spec/template/spec/initContainers
+        value:
+          - name: selinux-relabel
+            image: registry.access.redhat.com/ubi9/ubi:latest
+            command: ["chcon", "-Rt", "container_file_t", "/run/spire/agent-sockets"]
+            securityContext:
+              privileged: true
+            volumeMounts:
+              - name: spire-agent-socket
+                mountPath: /run/spire/agent-sockets
+
+  # SELinux relabel init container for Agent Service
+  - target:
+      kind: Deployment
+      name: agent-service
+    patch: |-
+      - op: add
+        path: /spec/template/spec/initContainers
+        value:
+          - name: selinux-relabel
+            image: registry.access.redhat.com/ubi9/ubi:latest
+            command: ["chcon", "-Rt", "container_file_t", "/run/spire/agent-sockets"]
+            securityContext:
+              privileged: true
+            volumeMounts:
+              - name: spire-agent-socket
+                mountPath: /run/spire/agent-sockets
+
+  # SELinux relabel init container for Web Dashboard
+  - target:
+      kind: Deployment
+      name: web-dashboard
+    patch: |-
+      - op: add
+        path: /spec/template/spec/initContainers
+        value:
+          - name: selinux-relabel
+            image: registry.access.redhat.com/ubi9/ubi:latest
+            command: ["chcon", "-Rt", "container_file_t", "/run/spire/agent-sockets"]
+            securityContext:
+              privileged: true
+            volumeMounts:
+              - name: spire-agent-socket
+                mountPath: /run/spire/agent-sockets

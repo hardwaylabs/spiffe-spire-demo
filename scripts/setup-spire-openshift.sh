@@ -94,6 +94,18 @@ oc wait --for=condition=ready pod -l app.kubernetes.io/name=agent -n spire-syste
 echo "Applying ClusterSPIFFEID registrations for demo workloads..."
 oc apply -f "$PROJECT_ROOT/deploy/spire/clusterspiffeids.yaml"
 
+# Phase 5: Prepare demo namespace with SCC
+# The demo pods use init containers with 'chcon' to relabel SELinux contexts
+# See: https://github.com/spiffe/spiffe-csi/issues/54
+echo "Phase 5: Creating spiffe-demo namespace and granting SCC..."
+oc create namespace spiffe-demo 2>/dev/null || true
+oc label namespace spiffe-demo \
+    pod-security.kubernetes.io/enforce=privileged \
+    pod-security.kubernetes.io/audit=privileged \
+    pod-security.kubernetes.io/warn=privileged \
+    --overwrite
+oc adm policy add-scc-to-user privileged -z default -n spiffe-demo
+
 echo ""
 echo "=== SPIRE setup on OpenShift complete ==="
 echo ""
@@ -106,4 +118,7 @@ echo "  oc exec -n spire-system spire-server-0 -c spire-server -- spire-server e
 echo ""
 echo "Next step: Deploy the demo application with:"
 echo "  oc apply -k deploy/k8s/overlays/openshift"
+echo ""
+echo "Note: The OpenShift overlay includes SELinux relabel init containers"
+echo "      to fix SPIFFE CSI driver socket permission issues."
 echo ""

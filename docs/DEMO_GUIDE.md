@@ -38,11 +38,12 @@ We use [Kustomize](https://kustomize.io/) to manage different deployment modes. 
 
 ### Deployment Modes Overview
 
-| Mode      | Images      | SPIFFE     | Use Case                      |
-| --------- | ----------- | ---------- | ----------------------------- |
-| **mock**  | ghcr.io     | Mocked     | Quick demo, no SPIRE required |
-| **local** | localhost/* | Real SPIRE | Local development with Kind   |
-| **ghcr**  | ghcr.io     | Real SPIRE | Production-like with SPIRE    |
+| Mode          | Images      | SPIFFE     | Use Case                         |
+| ------------- | ----------- | ---------- | -------------------------------- |
+| **mock**      | ghcr.io     | Mocked     | Quick demo, no SPIRE required    |
+| **local**     | localhost/* | Real SPIRE | Local development with Kind      |
+| **ghcr**      | ghcr.io     | Real SPIRE | Production-like with SPIRE       |
+| **openshift** | ghcr.io     | Real SPIRE | OpenShift with SCC and SELinux   |
 
 ### Option A: Mock Mode (Quickest Demo)
 
@@ -136,6 +137,38 @@ open http://localhost:8080
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
+### Option E: OpenShift (Production with SCC/SELinux)
+
+Deploy to OpenShift with real SPIRE and proper Security Context Constraints.
+
+**Prerequisites:** [oc CLI](https://docs.openshift.com/container-platform/latest/cli_reference/openshift_cli/getting-started-cli.html), [Helm](https://helm.sh/docs/intro/install/), cluster-admin access
+
+```bash
+# Clone the repository
+git clone https://github.com/hardwaylabs/spiffe-spire-demo.git
+cd spiffe-spire-demo
+
+# Setup SPIRE on OpenShift (handles SCC and SELinux)
+./scripts/setup-spire-openshift.sh
+
+# Deploy with OpenShift overlay
+oc apply -k deploy/k8s/overlays/openshift
+
+# Wait for pods and check status
+oc -n spiffe-demo wait --for=condition=ready pod --all --timeout=180s
+oc -n spiffe-demo get pods
+
+# Port-forward to access dashboard
+oc -n spiffe-demo port-forward svc/web-dashboard 8080:80 &
+open http://localhost:8080
+```
+
+**OpenShift-specific features:**
+- Grants `privileged` SCC to SPIRE agent and CSI driver
+- Grants `anyuid` SCC to SPIRE server
+- Uses SELinux relabel init containers for CSI socket access
+- Sets `pod-security.kubernetes.io/enforce: privileged` on demo namespace
+
 ### Switching Between Modes
 
 ```bash
@@ -167,7 +200,8 @@ deploy/k8s/
 └── overlays/
     ├── mock/               # ghcr.io images, MOCK_SPIFFE=true
     ├── local/              # localhost/* images, MOCK_SPIFFE=false, SPIRE
-    └── ghcr/               # ghcr.io images, MOCK_SPIFFE=false, SPIRE
+    ├── ghcr/               # ghcr.io images, MOCK_SPIFFE=false, SPIRE
+    └── openshift/          # ghcr.io images, SPIRE, SCC/SELinux fixes
 ```
 
 ## Demo Scenarios to Try
@@ -325,3 +359,17 @@ Press `Ctrl+C` in the terminal running `run-local.sh`.
 **OPA errors in logs?**
 
 - Check `tmp/logs/opa-service.log` for policy evaluation errors
+
+**OpenShift pods stuck at ContainerCreating?**
+
+- Check if SPIRE components are running: `oc get pods -n spire-system`
+- Verify SCC grants: `oc get scc privileged -o yaml | grep spiffe-demo`
+- Check for SELinux denials: `oc debug node/<node-name> -- chroot /host ausearch -m AVC`
+- Redeploy with SELinux fix: `oc delete -k deploy/k8s/overlays/openshift && oc apply -k deploy/k8s/overlays/openshift`
+
+**OpenShift socket permission denied?**
+
+- This is usually SELinux blocking access to CSI-mounted sockets
+- The OpenShift overlay includes init containers that run `chcon` to relabel the socket
+- Ensure the `privileged` SCC is granted to the default service account: `oc adm policy add-scc-to-user privileged -z default -n spiffe-demo`
+- Re-run the setup script: `./scripts/setup-spire-openshift.sh`
