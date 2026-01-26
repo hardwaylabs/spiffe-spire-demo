@@ -1,7 +1,6 @@
 package demo.users
 
-import future.keywords.in
-import future.keywords.if
+import rego.v1
 
 # User-to-department mappings
 # In production, this would come from an identity provider (LDAP, AD, OIDC claims)

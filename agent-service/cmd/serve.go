@@ -255,7 +255,7 @@ func (s *AgentService) handleDelegatedAccess(w http.ResponseWriter, r *http.Requ
 		// Return a proper JSON response for the dashboard
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"granted": false,
 			"reason":  "Agent requests require user delegation context. Agents cannot access resources without explicit user delegation.",
 			"agent":   agent.ID,
@@ -301,15 +301,15 @@ func (s *AgentService) handleDelegatedAccess(w http.ResponseWriter, r *http.Requ
 type AccessResult struct {
 	Granted  bool        `json:"granted"`
 	Reason   string      `json:"reason"`
-	Document interface{} `json:"document,omitempty"`
+	Document any `json:"document,omitempty"`
 	Agent    string      `json:"agent,omitempty"`
 	User     string      `json:"user,omitempty"`
 }
 
 func (s *AgentService) accessDocumentDelegated(ctx context.Context, agent *store.Agent, userSPIFFEID, documentID string) (*AccessResult, error) {
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"document_id": documentID,
-		"delegation": map[string]interface{}{
+		"delegation": map[string]any{
 			"user_spiffe_id":  userSPIFFEID,
 			"agent_spiffe_id": agent.SPIFFEID,
 		},
@@ -342,7 +342,7 @@ func (s *AgentService) accessDocumentDelegated(ctx context.Context, agent *store
 	}
 	defer resp.Body.Close()
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
