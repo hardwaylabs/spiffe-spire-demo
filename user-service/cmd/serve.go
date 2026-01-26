@@ -325,7 +325,7 @@ func (s *UserService) handleDelegate(w http.ResponseWriter, r *http.Request) {
 type AccessResult struct {
 	Granted  bool        `json:"granted"`
 	Reason   string      `json:"reason"`
-	Document interface{} `json:"document,omitempty"`
+	Document any `json:"document,omitempty"`
 	User     string      `json:"user,omitempty"`
 	Agent    string      `json:"agent,omitempty"`
 }
@@ -334,7 +334,7 @@ func (s *UserService) accessDocument(ctx context.Context, spiffeID, documentID s
 	UserSPIFFEID  string `json:"user_spiffe_id"`
 	AgentSPIFFEID string `json:"agent_spiffe_id"`
 }) (*AccessResult, error) {
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"document_id": documentID,
 	}
 	if delegation != nil {
@@ -363,7 +363,7 @@ func (s *UserService) accessDocument(ctx context.Context, spiffeID, documentID s
 	}
 	defer resp.Body.Close()
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -394,7 +394,7 @@ func (s *UserService) accessDocument(ctx context.Context, spiffeID, documentID s
 }
 
 func (s *UserService) delegateToAgent(ctx context.Context, user *store.User, agentID, documentID string) (*AccessResult, error) {
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"user_spiffe_id": user.SPIFFEID,
 		"document_id":    documentID,
 	}
@@ -420,7 +420,7 @@ func (s *UserService) delegateToAgent(ctx context.Context, user *store.User, age
 	}
 	defer resp.Body.Close()
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}

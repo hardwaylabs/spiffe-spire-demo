@@ -25,7 +25,7 @@ type Config struct {
 type WorkloadIdentity struct {
 	SPIFFEID    string
 	Certificate *x509.Certificate
-	PrivateKey  interface{}
+	PrivateKey  any
 	TrustBundle []*x509.Certificate
 }
 

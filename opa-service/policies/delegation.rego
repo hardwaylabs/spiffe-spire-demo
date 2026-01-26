@@ -1,9 +1,9 @@
 package demo.authorization
 
-import data.demo.users
+import rego.v1
+
 import data.demo.agents
-import future.keywords.in
-import future.keywords.if
+import data.demo.users
 
 # Document metadata - 7 sample documents
 documents := {

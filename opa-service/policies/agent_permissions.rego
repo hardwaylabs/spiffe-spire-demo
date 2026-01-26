@@ -1,7 +1,6 @@
 package demo.agents
 
-import future.keywords.in
-import future.keywords.if
+import rego.v1
 
 # Agent capability mappings
 # Defines which document types/departments each agent can access

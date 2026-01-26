@@ -203,7 +203,7 @@ func (d *Dashboard) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"Title": "SPIFFE/SPIRE Zero Trust Demo",
 	}
 
@@ -264,7 +264,7 @@ func (d *Dashboard) handleSSE(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *Dashboard) broadcastLog(entry LogEntry) {
-	data, _ := json.Marshal(map[string]interface{}{
+	data, _ := json.Marshal(map[string]any{
 		"type": "log",
 		"log":  entry,
 	})
@@ -299,7 +299,7 @@ func (d *Dashboard) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 
 	d.log.Info("Users fetched successfully", "status", resp.StatusCode)
 	w.Header().Set("Content-Type", "application/json")
-	var users interface{}
+	var users any
 	json.NewDecoder(resp.Body).Decode(&users)
 	json.NewEncoder(w).Encode(users)
 }
@@ -322,7 +322,7 @@ func (d *Dashboard) handleGetAgents(w http.ResponseWriter, r *http.Request) {
 
 	d.log.Info("Agents fetched successfully", "status", resp.StatusCode)
 	w.Header().Set("Content-Type", "application/json")
-	var agents interface{}
+	var agents any
 	json.NewDecoder(resp.Body).Decode(&agents)
 	json.NewEncoder(w).Encode(agents)
 }
@@ -345,7 +345,7 @@ func (d *Dashboard) handleGetDocuments(w http.ResponseWriter, r *http.Request) {
 
 	d.log.Info("Documents fetched successfully", "status", resp.StatusCode)
 	w.Header().Set("Content-Type", "application/json")
-	var documents interface{}
+	var documents any
 	json.NewDecoder(resp.Body).Decode(&documents)
 	json.NewEncoder(w).Encode(documents)
 }
@@ -395,7 +395,7 @@ func (d *Dashboard) handleDirectAccess(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	d.log.Info("User service response", "status", resp.StatusCode)
-	var result map[string]interface{}
+	var result map[string]any
 	json.NewDecoder(resp.Body).Decode(&result)
 
 	if resp.StatusCode == http.StatusForbidden {
@@ -494,7 +494,7 @@ func (d *Dashboard) handleDelegatedAccess(w http.ResponseWriter, r *http.Request
 	defer resp.Body.Close()
 
 	d.log.Info("Service response", "status", resp.StatusCode)
-	var result map[string]interface{}
+	var result map[string]any
 	json.NewDecoder(resp.Body).Decode(&result)
 
 	if resp.StatusCode == http.StatusForbidden || (result["granted"] != nil && result["granted"] == false) {
@@ -530,8 +530,8 @@ func (d *Dashboard) handleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := map[string]interface{}{
-		"services": map[string]interface{}{},
+	status := map[string]any{
+		"services": map[string]any{},
 	}
 
 	services := map[string]string{
@@ -543,13 +543,13 @@ func (d *Dashboard) handleStatus(w http.ResponseWriter, r *http.Request) {
 	for name, url := range services {
 		resp, err := d.httpClient.Get(url)
 		if err != nil {
-			status["services"].(map[string]interface{})[name] = "offline"
+			status["services"].(map[string]any)[name] = "offline"
 		} else {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				status["services"].(map[string]interface{})[name] = "healthy"
+				status["services"].(map[string]any)[name] = "healthy"
 			} else {
-				status["services"].(map[string]interface{})[name] = "unhealthy"
+				status["services"].(map[string]any)[name] = "unhealthy"
 			}
 		}
 	}
