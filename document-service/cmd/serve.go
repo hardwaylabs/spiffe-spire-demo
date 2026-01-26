@@ -65,7 +65,7 @@ type OPAResponse struct {
 	Result struct {
 		Allow   bool                   `json:"allow"`
 		Reason  string                 `json:"reason"`
-		Details map[string]interface{} `json:"details,omitempty"`
+		Details map[string]any `json:"details,omitempty"`
 	} `json:"result"`
 }
 
@@ -83,7 +83,7 @@ type DocumentService struct {
 func jsonError(w http.ResponseWriter, message string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"error":  message,
 		"reason": message,
 	})
@@ -245,7 +245,7 @@ func (s *DocumentService) handleDocument(w http.ResponseWriter, r *http.Request)
 
 	// Return document metadata (without content - use /access for content)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"id":                   doc.ID,
 		"title":                doc.Title,
 		"sensitivity":          doc.Sensitivity,
@@ -314,7 +314,7 @@ func (s *DocumentService) handleAccess(w http.ResponseWriter, r *http.Request) {
 		metrics.AuthorizationDecisions.WithLabelValues("document-service", "deny", callerType).Inc()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"error":  "Access denied",
 			"reason": reason,
 		})
@@ -326,9 +326,9 @@ func (s *DocumentService) handleAccess(w http.ResponseWriter, r *http.Request) {
 	s.log.Document(doc.ID, "Returning document content")
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"document": doc,
-		"access": map[string]interface{}{
+		"access": map[string]any{
 			"granted": true,
 			"reason":  reason,
 		},

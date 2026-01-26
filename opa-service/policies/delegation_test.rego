@@ -1,6 +1,6 @@
 package demo.authorization
 
-import future.keywords.in
+import rego.v1
 
 # Test: Public documents are always accessible
 test_public_document_access if {

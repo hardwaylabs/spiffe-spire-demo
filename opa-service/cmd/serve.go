@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
@@ -53,7 +53,7 @@ type Delegation struct {
 type PolicyDecision struct {
 	Allow   bool                   `json:"allow"`
 	Reason  string                 `json:"reason"`
-	Details map[string]interface{} `json:"details,omitempty"`
+	Details map[string]any `json:"details,omitempty"`
 }
 
 type OPAService struct {
@@ -280,7 +280,7 @@ func (s *OPAService) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"result": decision,
 	})
 }
@@ -290,12 +290,12 @@ func (s *OPAService) evaluate(ctx context.Context, input PolicyInput) (*PolicyDe
 	evalLog := logger.New(logger.ComponentOPAEval)
 
 	// Convert input to map for OPA
-	inputMap := map[string]interface{}{
+	inputMap := map[string]any{
 		"caller_spiffe_id": input.CallerSPIFFEID,
 		"document_id":      input.DocumentID,
 	}
 	if input.Delegation != nil {
-		inputMap["delegation"] = map[string]interface{}{
+		inputMap["delegation"] = map[string]any{
 			"user_spiffe_id":  input.Delegation.UserSPIFFEID,
 			"agent_spiffe_id": input.Delegation.AgentSPIFFEID,
 		}
@@ -317,7 +317,7 @@ func (s *OPAService) evaluate(ctx context.Context, input PolicyInput) (*PolicyDe
 	}
 
 	// Extract decision from results
-	resultMap, ok := results[0].Expressions[0].Value.(map[string]interface{})
+	resultMap, ok := results[0].Expressions[0].Value.(map[string]any)
 	if !ok {
 		return &PolicyDecision{
 			Allow:  false,
@@ -335,7 +335,7 @@ func (s *OPAService) evaluate(ctx context.Context, input PolicyInput) (*PolicyDe
 	if reason, ok := resultMap["reason"].(string); ok {
 		decision.Reason = reason
 	}
-	if details, ok := resultMap["details"].(map[string]interface{}); ok {
+	if details, ok := resultMap["details"].(map[string]any); ok {
 		decision.Details = details
 	}
 

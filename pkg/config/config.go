@@ -113,7 +113,7 @@ func setDefaults(v *viper.Viper, serviceName string) {
 }
 
 // Load reads the configuration from file and environment
-func Load(v *viper.Viper, cfg interface{}) error {
+func Load(v *viper.Viper, cfg any) error {
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return fmt.Errorf("failed to read config file: %w", err)
